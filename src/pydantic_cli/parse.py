@@ -1,5 +1,7 @@
 from collections import defaultdict
 from typing import Dict, List, TypeAlias
+import sys
+
 from pydantic_cli.error import CliArgError, CliValueError, DuplicateKeyError
 
 from pydantic_cli.nested_dict import merge_nested_dict
@@ -87,9 +89,17 @@ def parse_nested_arg(args: Dict[str, str]) -> NestedDict:
     return {**args, **nested_args}
 
 
-def parse_argv(argv: List[str]) -> NestedDict:
+def parse_argv_as_list(argv: List[str]) -> NestedDict:
     """
     this function is used to parse the sys.argv and return dict (or nested dict)
     string representation of the arguments.
     """
     return parse_nested_arg(semi_parse_argv(argv))
+
+
+def parse_argv() -> NestedDict:
+    """
+    Parse argument from argv and return a nested dict of string arguments that can be
+    used to instantiate a pydantic model.
+    """
+    return parse_argv_as_list(sys.argv)

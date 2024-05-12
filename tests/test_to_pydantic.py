@@ -1,4 +1,4 @@
-from pydantic_cli.parse import parse_argv
+from pydantic_cli.parse import parse_argv_as_list
 
 from pydantic import BaseModel
 
@@ -10,7 +10,7 @@ def test_cli_to_pydantic():
 
     argv = ["main.py", "--hello", "world", "--world", "1"]
 
-    arg_parsed = parse_argv(argv)
+    arg_parsed = parse_argv_as_list(argv)
     assert arg_parsed == {"hello": "world", "world": "1"}
 
     arg_validated = Foo(**arg_parsed)
@@ -42,7 +42,7 @@ def test_complex_pydantic():
         "--bar",
         "hello",
     ]
-    arg_parsed = parse_argv(argv)
+    arg_parsed = parse_argv_as_list(argv)
 
     arg_validated = MainModel(**arg_parsed)
 
