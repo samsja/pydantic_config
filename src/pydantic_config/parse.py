@@ -1,14 +1,8 @@
 from collections import defaultdict
 from typing import Dict, List, TypeAlias
+from pydantic_config.error import CliArgError, CliValueError, DuplicateKeyError
 
-
-class PydantiCliError(ValueError): ...
-
-
-class CliArgError(PydantiCliError): ...
-
-
-class CliValueError(PydantiCliError): ...
+from pydantic_config.nested_dict import merge_nested_dict
 
 
 NestedDict: TypeAlias = Dict[str, "NestedDict"]
@@ -52,6 +46,9 @@ def semi_parse_argv(argv: List[str]) -> Dict[str, str]:
             "-", "_"
         )  # python variable name cannot have - inside, but it is commonly used in cli
 
+        if arg_name in semi_parse_arg:
+            raise DuplicateKeyError(f"{arg_name} is duplicated")
+
         semi_parse_arg[arg_name] = value
 
     return semi_parse_arg
@@ -75,11 +72,16 @@ def parse_nested_arg(args: Dict[str, str]) -> NestedDict:
                 raise CliArgError(f"{arg_name} is not a valid")
             root_arg_name = splits[0]
 
-            if len(splits[1:]) > 1:  # if there is more than one nested level
-                value = parse_nested_arg({".".join(splits[1:]): value})
-                value = value[splits[1]]
+            nested_arg_name = splits[1]
 
-            nested_args[root_arg_name][splits[1]] = value
+            if len(splits[1:]) > 1:  # if there is more than one nested level
+                value_nested = parse_nested_arg({".".join(splits[1:]): value})
+                nested_args[root_arg_name] = merge_nested_dict(
+                    nested_args[root_arg_name], value_nested
+                )
+            else:
+                nested_args[root_arg_name][nested_arg_name] = value
+
             del args[arg_name]
 
     return {**args, **nested_args}
