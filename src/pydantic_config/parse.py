@@ -1,4 +1,5 @@
-from typing import Dict, List
+from collections import defaultdict
+from typing import Dict, List, TypeAlias
 
 
 class PydantiCliError(ValueError): ...
@@ -8,6 +9,9 @@ class CliArgError(PydantiCliError): ...
 
 
 class CliValueError(PydantiCliError): ...
+
+
+NestedDict: TypeAlias = Dict[str, "NestedDict"]
 
 
 def semi_parse_argv(argv: List[str]) -> Dict[str, str]:
@@ -53,11 +57,37 @@ def semi_parse_argv(argv: List[str]) -> Dict[str, str]:
     return semi_parse_arg
 
 
-def parse_argv(argv: List[str]):
+def parse_nested_arg(args: Dict[str, str]) -> NestedDict:
+    """
+    take a dict, extract key that contain "." and create a nested dict inside the arg.
+
+    Example:
+
+    >>> parse_nested_arg({"hello.world": "foo"}) == {"hello": {"world": "foo"}}
+    """
+    nested_args = defaultdict(dict)
+
+    for arg_name, value in list(args.items()):  # we need list because we modify args
+        if "." in arg_name:
+            splits = arg_name.split(".")
+
+            if any(part == "" for part in splits):
+                raise CliArgError(f"{arg_name} is not a valid")
+            root_arg_name = splits[0]
+
+            if len(splits[1:]) > 1:  # if there is more than one nested level
+                value = parse_nested_arg({".".join(splits[1:]): value})
+                value = value[splits[1]]
+
+            nested_args[root_arg_name][splits[1]] = value
+            del args[arg_name]
+
+    return {**args, **nested_args}
+
+
+def parse_argv(argv: List[str]) -> NestedDict:
     """
     this function is used to parse the sys.argv and return dict (or nested dict)
-    string representation of the arguments
+    string representation of the arguments.
     """
-
-    args = semi_parse_argv(argv)
-    return args
+    return parse_nested_arg(semi_parse_argv(argv))
