@@ -1,4 +1,4 @@
-from pydantic_config.error import DuplicateKeyError
+from pydantic_cli.error import DuplicateKeyError
 
 
 def merge_nested_dict(left_dict, right_dict):

@@ -1,6 +1,6 @@
 import pytest
 
-from pydantic_config.parse import (
+from pydantic_cli.parse import (
     DuplicateKeyError,
     semi_parse_argv,
     CliArgError,
