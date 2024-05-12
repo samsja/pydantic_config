@@ -22,3 +22,6 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pydantic_config"]
+
+[tool.hatch.version]
+path = "src/pydantic_config/__init__.py"
