@@ -28,7 +28,6 @@ def semi_parse_argv(argv: List[str]) -> Dict[str, str]:
 
     while len(argv) > 0:
         arg_name = argv.pop(0)
-        print(argv)
 
         if not arg_name.startswith("--"):
             raise CliArgError(f"{arg_name} is not a valid argument, try {arg_name}")
