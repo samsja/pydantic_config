@@ -1,18 +1,18 @@
-# Pydantic cli
+# Pydantic config
 
-Pydantic is a dead simple cli manager that built on top of pydantic.
+Pydantic is a dead simple config manager that built on top of pydantic.
 
-The argument from the cli arse parsed into a dictionary and pydantic validate and coerce it.
+It can parse some configuration either from cli or from a yaml/json/toml file and validate it against a pydantic model.
 
 ## Install
 
 ```bash
-pip install git+https://github.com/samsja/pydantic_cli
+pip install git+https://github.com/samsja/pydantic_config
 ```
 
-## Syntax
+## CLI syntax
 
-Pydantic cli accept argument with two leading minus `-`.
+Pydantic config accept argument with two leading minus `-`.
 
 ```bash
 python main.py --arg value --arg2 value2
@@ -27,7 +27,7 @@ python main.py --my-arg value
 python main.py --my_arg value
 ```
 
-Pydantic cli support nested argument using the `.` delimiter
+Pydantic config support nested argument using the `.` delimiter
 
 ```bash
 python main.py --hello.foo bar --xyz value
@@ -43,7 +43,7 @@ this hierarchy will be translated into nested python dictionaries
 This is the code to define the cli (in a file name `simple_cli.py`)
 
 ```python
-from pydantic_cli import parse_argv, BaseModel
+from pydantic_config import parse_argv, BaseModel
 
 
 class Config(BaseModel):
@@ -75,7 +75,7 @@ python simple_cli.py  --hello world --foo bar
 
 ```python
 from pathlib import Path
-from pydantic_cli import parse_argv, BaseModel
+from pydantic_config import parse_argv, BaseModel
 
 
 class TrainingConfig(BaseModel):
@@ -119,8 +119,10 @@ python examples/nested_cli.py --train.batch_size 32 --data.path ~/datasets
 
 ## Why ?
 
-Because I have been tired of the different cli tool in the python ecosystem. I want to let [Pydantic](https://docs.pydantic.dev/latest/) handle all of the validation and coercion logic (because it is doing it great), I just need a simple tool that can
-generate a dict from the cli arguments and pass it pydantic.
+Because I have been tired of the different cli tool and config manager in the python ecosystem. I want to let [Pydantic](https://docs.pydantic.dev/latest/) handle all of the validation and coercion logic (because it is doing it great), I just need a simple tool that can
+generate a dict from the cli arguments and/or a json file and pass it pydantic.
+
+Pydantic_config is what most of the cli/config tool would have been if pydantic would have been released earlier.
 
 Honorable mention to the tool that I used in the past:
 
@@ -129,6 +131,7 @@ Honorable mention to the tool that I used in the past:
 * [click](https://click.palletsprojects.com/en/8.0.x/cli/)
 * [fire](https://github.com/google/python-fire)
 * [jsonargparse](https://github.com/omni-us/jsonargparse)
+
 
 
 
@@ -144,7 +147,7 @@ This project use [rye](https://github.com/astral-sh/rye) to manage python.
 
 ## todo list
 
-- [] rename since pydantic_cli is already used on pypi
+- [] rename since pydantic_config is already used on pypi
 - [] add nice error message
 - [] add decorator to wrap function
 - [] add rich for ui

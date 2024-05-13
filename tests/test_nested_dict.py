@@ -1,5 +1,5 @@
-from pydantic_cli.error import DuplicateKeyError
-from pydantic_cli.nested_dict import merge_nested_dict
+from pydantic_config.error import DuplicateKeyError
+from pydantic_config.nested_dict import merge_nested_dict
 
 
 import pytest

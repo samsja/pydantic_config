@@ -1,4 +1,4 @@
-from pydantic_cli import parse_argv, BaseModel
+from pydantic_config import parse_argv, BaseModel
 
 
 class Config(BaseModel):

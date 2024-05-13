@@ -1,6 +1,6 @@
 import pytest
-from pydantic_cli.error import CliArgError, DuplicateKeyError
-from pydantic_cli.parse import parse_nested_arg
+from pydantic_config.error import CliArgError, DuplicateKeyError
+from pydantic_config.parse import parse_nested_arg
 
 
 def test_parse_nested_arg():

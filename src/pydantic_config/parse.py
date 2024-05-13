@@ -2,9 +2,9 @@ from collections import defaultdict
 from typing import Dict, List, TypeAlias
 import sys
 
-from pydantic_cli.error import CliArgError, CliValueError, DuplicateKeyError
+from pydantic_config.error import CliArgError, CliValueError, DuplicateKeyError
 
-from pydantic_cli.nested_dict import merge_nested_dict
+from pydantic_config.nested_dict import merge_nested_dict
 
 
 NestedDict: TypeAlias = Dict[str, "NestedDict"]

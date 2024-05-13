@@ -1,6 +1,6 @@
 __version__ = "0.0.1"
 
-from pydantic_cli.parse import parse_argv
+from pydantic_config.parse import parse_argv
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import ConfigDict
 
