@@ -29,3 +29,8 @@ def test_duplicate_keys_fail():
 def test_python_underscor_replace():
     argv = ["main.py", "--hello-world", "hye", "--foo_bar", "bar"]
     assert semi_parse_argv(argv) == {"hello_world": "hye", "foo_bar": "bar"}
+
+
+def test_bool():
+    argv = ["main.py", "--hello", "--no-foo", "--no-bar"]
+    assert semi_parse_argv(argv) == {"hello": True, "foo": False, "bar": False}

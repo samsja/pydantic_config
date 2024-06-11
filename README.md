@@ -10,34 +10,6 @@ It can parse some configuration either from cli or from a yaml/json/toml file an
 pip install git+https://github.com/samsja/pydantic_config
 ```
 
-## CLI syntax
-
-Pydantic config accept argument with two leading minus `-`.
-
-```bash
-python main.py --arg value --arg2 value2
-```
-
-Any other `-` will be converted to an underscoed `_`. As in python variable name use underscode but cli args are usaully using
-minus as seperator.
-
-This two are therefore equivalent
-```bash
-python main.py --my-arg value
-python main.py --my_arg value
-```
-
-Pydantic config support nested argument using the `.` delimiter
-
-```bash
-python main.py --hello.foo bar --xyz value
-python main.py --hello.foo.a abc --hello.foo.b bar
-```
-
-this hierarchy will be translated into nested python dictionaries
-
-
-
 ## Example
 
 This is the code to define the cli (in a file name `simple_cli.py`)
@@ -116,6 +88,49 @@ You can use it like this
 python examples/nested_cli.py --train.batch_size 32 --data.path ~/datasets
 ```
 
+## CLI syntax
+
+Pydantic config accept argument with two leading minus `-`.
+
+```bash
+python main.py --arg value --arg2 value2
+```
+
+### Python varaible,  `-` and `_`
+
+Any other `-` will be converted to an underscoed `_`. As in python variable name use underscode but cli args are usaully using
+minus as seperator.
+
+This two are therefore equivalent
+```bash
+python main.py --my-arg value
+python main.py --my_arg value
+```
+
+### Nested argument
+
+Pydantic config support nested argument using the `.` delimiter
+
+```bash
+python main.py --hello.foo bar --xyz value
+python main.py --hello.foo.a abc --hello.foo.b bar
+```
+
+this hierarchy will be translated into nested python dictionaries
+
+### Boolean handling
+
+If you pass an argument without a value, pydantic_config will assume it is a boolean and set the value to `True`.
+
+```bash
+python main.py --my-arg
+```
+
+Unless you pass `--no-my-arg`, which will set the value to `False`.
+
+```bash
+python main.py --no-my-arg
+```
 
 ## Why ?
 
@@ -147,8 +162,10 @@ This project use [rye](https://github.com/astral-sh/rye) to manage python.
 
 ## todo list
 
-- [] rename since pydantic_config is already used on pypi
-- [] add nice error message
-- [] add decorator to wrap function
-- [] add rich for ui
+- [ ] rename since pydantic_config is already used on pypi
+- [ ] add nice error message
+- [ ] add decorator to wrap function
+- [ ] add rich for ui
+- [x] add no prefix to negate boolean
+- [ ] nice error message
 

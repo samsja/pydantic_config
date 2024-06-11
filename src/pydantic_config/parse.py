@@ -2,7 +2,7 @@ from collections import defaultdict
 from typing import Dict, List, TypeAlias
 import sys
 
-from pydantic_config.error import CliArgError, CliValueError, DuplicateKeyError
+from pydantic_config.error import CliArgError, DuplicateKeyError
 
 from pydantic_config.nested_dict import merge_nested_dict
 
@@ -32,25 +32,28 @@ def semi_parse_argv(argv: List[str]) -> Dict[str, str]:
         if not arg_name.startswith("--"):
             raise CliArgError(f"{arg_name} is not a valid argument, try {arg_name}")
 
-        if len(argv) == 0:
-            raise CliValueError(
-                f"You are missing a value after --{arg_name} SOMETHING "
-            )
+        if len(argv) == 0:  # if we end with smth like python cmd.py ---aa a --hello
+            bool_arg = True
+        else:
+            bool_arg = argv[0].startswith("--")
 
-        value = argv.pop(0)
+        if bool_arg:
+            if arg_name.startswith("--no-"):
+                value = False
+                arg_name = arg_name.replace("--no-", "--")
+            else:
+                value = True
 
-        if value.startswith("-"):
-            raise CliValueError(f"--{arg_name} {value} is not correct")
+        else:
+            value = argv.pop(0)
 
-        arg_name = arg_name[2:]  # remove the leading --
-        arg_name = arg_name.replace(
-            "-", "_"
-        )  # python variable name cannot have - inside, but it is commonly used in cli
+        arg_name_wo_trailing_dash = arg_name[2:]  # remove the leading --
+        arg_name_wo_trailing_dash = arg_name_wo_trailing_dash.replace("-", "_")
+        # python variable name cannot have - inside, but it is commonly used in cli
 
-        if arg_name in semi_parse_arg:
-            raise DuplicateKeyError(f"{arg_name} is duplicated")
-
-        semi_parse_arg[arg_name] = value
+        if arg_name_wo_trailing_dash in semi_parse_arg:
+            raise DuplicateKeyError(f"{arg_name_wo_trailing_dash} is duplicated")
+        semi_parse_arg[arg_name_wo_trailing_dash] = value
 
     return semi_parse_arg
 
