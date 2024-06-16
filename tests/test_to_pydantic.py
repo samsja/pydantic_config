@@ -1,10 +1,9 @@
 from pydantic_config.parse import parse_argv_as_list
-
-from pydantic import BaseModel
+from pydantic_config import BaseConfig
 
 
 def test_cli_to_pydantic():
-    class Foo(BaseModel):
+    class Foo(BaseConfig):
         hello: str
         world: int
 
@@ -19,15 +18,15 @@ def test_cli_to_pydantic():
 
 
 def test_complex_pydantic():
-    class NestedNestedModel(BaseModel):
+    class NestedNestedModel(BaseConfig):
         hello: str = "world"
         world: int
 
-    class NestedModel(BaseModel):
+    class NestedModel(BaseConfig):
         nested: NestedNestedModel
         foo: str
 
-    class MainModel(BaseModel):
+    class MainModel(BaseConfig):
         nested: NestedModel
         bar: str
 
