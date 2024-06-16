@@ -1,3 +1,5 @@
+from pydantic import ValidationError, validate_call
+import pytest
 from pydantic_config.parse import parse_argv_as_list
 from pydantic_config import BaseConfig
 
@@ -49,3 +51,30 @@ def test_complex_pydantic():
     assert arg_validated.nested.nested.world == 1
     assert arg_validated.nested.foo == "hello"
     assert arg_validated.bar == "hello"
+
+
+def test_validate_function():
+    class Config(BaseConfig):
+        hello: str
+        world: int
+
+    @validate_call
+    def foo(a: str, config: Config):
+        assert config.hello == "hello"
+        assert config.world == 1
+        assert a == "b"
+
+    arg_parsed = parse_argv_as_list(
+        ["main.py", "--a", "b", "--config.hello", "hello", "--config.world", "1"]
+    )
+    foo(**arg_parsed)
+
+    with pytest.raises(AssertionError):
+        arg_parsed = parse_argv_as_list(
+            ["main.py", "--a", "b", "--config.hello", "nooo", "--config.world", "1"]
+        )
+        foo(**arg_parsed)
+
+    with pytest.raises(ValidationError):
+        arg_parsed = parse_argv_as_list(["main.py", "--a", "b", "--config.world", "1"])
+        foo(**arg_parsed)
