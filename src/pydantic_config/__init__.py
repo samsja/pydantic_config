@@ -5,8 +5,8 @@ from pydantic import BaseModel as PydanticBaseModel
 from pydantic import ConfigDict
 
 
-class BaseModel(PydanticBaseModel):
+class BaseConfig(PydanticBaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-__all__ = ["parse_argv", "BaseModel"]
+__all__ = ["parse_argv", "BaseConfig"]

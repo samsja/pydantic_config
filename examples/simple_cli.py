@@ -1,7 +1,7 @@
-from pydantic_config import parse_argv, BaseModel
+from pydantic_config import parse_argv, BaseConfig
 
 
-class Config(BaseModel):
+class Config(BaseConfig):
     hello: str
     foo: int
 

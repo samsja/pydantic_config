@@ -15,10 +15,10 @@ pip install git+https://github.com/samsja/pydantic_config
 This is the code to define the cli (in a file name `simple_cli.py`)
 
 ```python
-from pydantic_config import parse_argv, BaseModel
+from pydantic_config import parse_argv, BaseConfig
 
 
-class Config(BaseModel):
+class Config(BaseConfig):
     hello: str 
     foo: int
 
@@ -47,17 +47,17 @@ python simple_cli.py  --hello world --foo bar
 
 ```python
 from pathlib import Path
-from pydantic_config import parse_argv, BaseModel
+from pydantic_config import parse_argv, BaseConfig
 
 
-class TrainingConfig(BaseModel):
+class TrainingConfig(BaseConfig):
     lr: float = 3e-4
     batch_size: int
 
-class DataConfig(BaseModel):
+class DataConfig(BaseConfig):
     path: Path
 
-class Config(BaseModel):
+class Config(BaseConfig):
     train: TrainingConfig
     data: DataConfig
 
