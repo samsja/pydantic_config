@@ -1,7 +1,6 @@
-from pydantic import ValidationError, validate_call
 import pytest
 from pydantic_config.parse import parse_argv_as_list
-from pydantic_config import BaseConfig
+from pydantic_config import BaseConfig, validate_call
 
 
 def test_cli_to_pydantic():
@@ -75,6 +74,7 @@ def test_validate_function():
         )
         foo(**arg_parsed)
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(SystemExit) as e:
         arg_parsed = parse_argv_as_list(["main.py", "--a", "b", "--config.world", "1"])
         foo(**arg_parsed)
+    assert e.value.code == 1

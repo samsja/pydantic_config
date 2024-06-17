@@ -1,6 +1,5 @@
 from typing import Literal
-from pydantic import validate_call
-from pydantic_config import parse_argv, BaseConfig
+from pydantic_config import parse_argv, BaseConfig, validate_call
 
 
 class TrainConfig(BaseConfig):

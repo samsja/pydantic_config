@@ -22,6 +22,10 @@ identify==2.5.36
     # via pre-commit
 iniconfig==2.0.0
     # via pytest
+markdown-it-py==3.0.0
+    # via rich
+mdurl==0.1.2
+    # via markdown-it-py
 nodeenv==1.8.0
     # via pre-commit
 packaging==24.0
@@ -35,9 +39,13 @@ pydantic==2.7.1
     # via pydantic-config
 pydantic-core==2.18.2
     # via pydantic
+pygments==2.18.0
+    # via rich
 pytest==8.2.0
 pyyaml==6.0.1
     # via pre-commit
+rich==13.7.1
+    # via pydantic-config
 setuptools==69.5.1
     # via nodeenv
 tomli==2.0.1

@@ -163,9 +163,8 @@ This project use [rye](https://github.com/astral-sh/rye) to manage python.
 ## todo list
 
 - [ ] rename since pydantic_config is already used on pypi
-- [ ] add nice error message
-- [ ] add decorator to wrap function
-- [ ] add rich for ui
+- [x] add decorator to wrap function
+- [x] add rich for ui
 - [x] add no prefix to negate boolean
-- [ ] nice error message
+- [x] nice error message
 
