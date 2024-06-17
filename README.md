@@ -34,8 +34,30 @@ python simple_cli.py  --hello world --foo bar
 >>> 'hello': 'world', 'foo': 1
 ```
 
+Under the hood, the cli argument are converted to a (nested) dictionary and passed to the function. Pydantic is used to validate
+the argument, eventually coercing the type if needed.
 
-## Nested argument Example
+For instance if you passed a wrong parameters:
+
+```bash
+python examples/simple_cli.py --hello world --foo --fooo
+```
+
+Pydantic config will complain:
+```bash
+╭─ 1 errors ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --fooo is not a valid cli argument                                                                                            │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+
+## Nested Config 
+
+Pydantic Config allow to represent nested config using pydantic [BaseModel](https://docs.pydantic.dev/latest/api/base_model/).
+
+The vision is that most ml code is a suite of nested funciton call, training loop calling model init, calling sub module init etcc.
+
+Allowing to represent the config as a nested model is the most natural way to represent ML code (IMO). It allows as well to locally define argument, tested them independently from other but still having a global config that can be validate ahead of time, allowing to fail early if necessary. 
+
 
 ```python
 from pathlib import Path
