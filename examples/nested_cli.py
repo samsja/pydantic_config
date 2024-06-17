@@ -1,5 +1,5 @@
 from pathlib import Path
-from pydantic_config import parse_argv, BaseConfig
+from pydantic_config import parse_argv, BaseConfig, validate_call
 
 
 class TrainingConfig(BaseConfig):
@@ -11,22 +11,17 @@ class DataConfig(BaseConfig):
     path: Path
 
 
-class Config(BaseConfig):
-    train: TrainingConfig
-    data: DataConfig
-
-
 def prepare_data(conf: DataConfig): ...  # prepare data
 
 
-def train(conf: TrainingConfig): ...  # train model
+def train_model(conf: TrainingConfig): ...  # train model
 
 
-def main(conf: Config):
-    prepare_data(conf.data)
-    train(conf.train)
+@validate_call
+def main(train: TrainingConfig, data: DataConfig):
+    prepare_data(data)
+    train_model(train)
 
 
 if __name__ == "__main__":
-    config = Config(**parse_argv())
-    main(config)
+    main(**parse_argv())

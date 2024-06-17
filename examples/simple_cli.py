@@ -1,15 +1,10 @@
-from pydantic_config import parse_argv, BaseConfig
+from pydantic_config import validate_call, parse_argv
 
 
-class Config(BaseConfig):
-    hello: str
-    foo: int
-
-
-def main(conf: Config):
-    print(conf.model_dump())
+@validate_call
+def main(hello: str, foo: int):
+    print(f"hello: {hello}, foo: {foo}")
 
 
 if __name__ == "__main__":
-    config = Config(**parse_argv())
-    main(config)
+    main(**parse_argv())

@@ -15,23 +15,15 @@ pip install git+https://github.com/samsja/pydantic_config
 This is the code to define the cli (in a file name `simple_cli.py`)
 
 ```python
-from pydantic_config import parse_argv, BaseConfig
+from pydantic_config import validate_call, parse_argv
 
-
-class Config(BaseConfig):
-    hello: str 
-    foo: int
-
-def main(conf: Config):
-
-    print(conf.model_dump())
+@validate_call
+def main(hello: str, foo: int):
+    print(f"hello: {hello}, foo: {foo}")
 
 
 if __name__ == "__main__":
-    
-    config = Config(**parse_argv())
-    main(config)
-
+    main(**parse_argv())
 ```
 
 you can call it like this
@@ -39,7 +31,7 @@ you can call it like this
 ```bash
 
 python simple_cli.py  --hello world --foo bar
->>> {'hello': 'world', 'foo': 1}
+>>> 'hello': 'world', 'foo': 1
 ```
 
 
@@ -47,38 +39,32 @@ python simple_cli.py  --hello world --foo bar
 
 ```python
 from pathlib import Path
-from pydantic_config import parse_argv, BaseConfig
+from pydantic_config import parse_argv, BaseConfig, validate_call
+
+
+from pathlib import Path
+from pydantic_config import parse_argv, BaseConfig, validate_call
 
 
 class TrainingConfig(BaseConfig):
     lr: float = 3e-4
     batch_size: int
 
+
 class DataConfig(BaseConfig):
     path: Path
 
-class Config(BaseConfig):
-    train: TrainingConfig
-    data: DataConfig
+def prepare_data(conf: DataConfig): ...  # prepare data
 
+def train_model(conf: TrainingConfig): ...  # train model
 
-
-def prepare_data(conf: DataConfig):
-    ... # prepare data
-
-def train(conf: TrainingConfig):
-    ... # train model
-
-def main(conf: Config):
-
-    prepare_data(conf.data)
-    train(conf.train)
-
+@validate_call
+def main(train: TrainingConfig, data: DataConfig):
+    prepare_data(data)
+    train_model(train)
 
 if __name__ == "__main__":
-    
-    config = Config(**parse_argv())
-    main(config)
+    main(**parse_argv())
 
 ```
 
