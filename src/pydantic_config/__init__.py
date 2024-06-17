@@ -17,10 +17,16 @@ class BaseConfig(PydanticBaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-def _recreate_cli_arg(loc: list[str]) -> str:
-    cli_cmd = "--" + ".".join(loc)
+def _recreate_cli_arg(loc: list[str], input) -> str:
+    cli_cmd = ".".join(loc)
     cli_cmd = cli_cmd.replace("_", "-")
-    return cli_cmd
+
+    if isinstance(input, bool) and input:
+        return "--" + cli_cmd
+    elif isinstance(input, bool) and not input:
+        return "--no-" + cli_cmd
+    else:
+        return "--" + cli_cmd + f" {input}"
 
 
 def _get_error_panel(error: str, n_errors: int) -> Panel:
@@ -37,6 +43,10 @@ def _get_error_panel(error: str, n_errors: int) -> Panel:
 
 @wraps(pydantic_validate_call)
 def validate_call(*args, **kwargs):
+    """
+    validate_call is a wrapper around pydantic.validate_call that add a nice error message when the arguments are not valid.
+    It is design to be the main entry point of the cli application.
+    """
     inner_wrapper = pydantic_validate_call(*args, **kwargs)
 
     def wrapper(*args, **kwargs):
@@ -48,7 +58,13 @@ def validate_call(*args, **kwargs):
             for error in e.errors():
                 if msg != "":
                     msg += "\n"
-                msg += f"[white][bold]{_recreate_cli_arg(error['loc'])}[/bold] is not a valid cli argument[/white]"
+
+                if error["type"] == "unexpected_keyword_argument":
+                    err_msg = "is not a valid cli argument"
+                else:
+                    err_msg = error["msg"]
+
+                msg += f"[white][bold]{_recreate_cli_arg(error['loc'], error['input'])}[/bold] {err_msg} [/white]"
 
             panel = _get_error_panel(msg, n_errors)
 
