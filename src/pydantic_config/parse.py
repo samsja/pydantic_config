@@ -104,4 +104,4 @@ def parse_argv() -> NestedDict:
     Parse argument from argv and return a nested dict of string arguments that can be
     used to instantiate a pydantic model.
     """
-    return parse_argv_as_list(sys.argv)
+    return parse_argv_as_list(list(sys.argv)) # need list otherwise it consume sys.argv for other tool like wandb
