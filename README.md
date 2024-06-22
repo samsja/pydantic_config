@@ -140,6 +140,15 @@ Unless you pass `--no-my-arg`, which will set the value to `False`.
 python main.py --no-my-arg
 ```
 
+## List handling
+
+To pass as list, just a repeat the argument
+
+```bash
+python main.py --my-list value1 --my-list value2
+>>> {"my_list": ["value1", "value2"]}
+```
+
 ## Why ?
 
 Because I have been tired of the different cli tool and config manager in the python ecosystem. I want to let [Pydantic](https://docs.pydantic.dev/latest/) handle all of the validation and coercion logic (because it is doing it great), I just need a simple tool that can

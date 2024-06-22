@@ -2,7 +2,7 @@ from collections import defaultdict
 from typing import Dict, List, TypeAlias
 import sys
 
-from pydantic_config.error import CliArgError, DuplicateKeyError
+from pydantic_config.error import CliArgError
 
 from pydantic_config.nested_dict import merge_nested_dict
 
@@ -52,8 +52,12 @@ def semi_parse_argv(argv: List[str]) -> Dict[str, str]:
         # python variable name cannot have - inside, but it is commonly used in cli
 
         if arg_name_wo_trailing_dash in semi_parse_arg:
-            raise DuplicateKeyError(f"{arg_name_wo_trailing_dash} is duplicated")
-        semi_parse_arg[arg_name_wo_trailing_dash] = value
+            if isinstance(semi_parse_arg[arg_name_wo_trailing_dash], list):
+                semi_parse_arg[arg_name_wo_trailing_dash].append(value)
+            else:
+                semi_parse_arg[arg_name_wo_trailing_dash] = [semi_parse_arg[arg_name_wo_trailing_dash], value]
+        else:
+            semi_parse_arg[arg_name_wo_trailing_dash] = value
 
     return semi_parse_arg
 
@@ -80,9 +84,7 @@ def parse_nested_arg(args: Dict[str, str]) -> NestedDict:
 
             if len(splits[1:]) > 1:  # if there is more than one nested level
                 value_nested = parse_nested_arg({".".join(splits[1:]): value})
-                nested_args[root_arg_name] = merge_nested_dict(
-                    nested_args[root_arg_name], value_nested
-                )
+                nested_args[root_arg_name] = merge_nested_dict(nested_args[root_arg_name], value_nested)
             else:
                 nested_args[root_arg_name][nested_arg_name] = value
 
@@ -104,4 +106,4 @@ def parse_argv() -> NestedDict:
     Parse argument from argv and return a nested dict of string arguments that can be
     used to instantiate a pydantic model.
     """
-    return parse_argv_as_list(list(sys.argv)) # need list otherwise it consume sys.argv for other tool like wandb
+    return parse_argv_as_list(list(sys.argv))  # need list otherwise it consume sys.argv for other tool like wandb
