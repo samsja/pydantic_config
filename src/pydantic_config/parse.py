@@ -2,10 +2,12 @@ from collections import defaultdict
 from typing import Dict, List, TypeAlias
 import sys
 
+from rich import print as rich_print
+
+
 from pydantic_config.error import CliArgError
-
 from pydantic_config.nested_dict import merge_nested_dict
-
+from pydantic_config._ui import _get_error_panel
 
 NestedDict: TypeAlias = Dict[str, "NestedDict"]
 
@@ -22,6 +24,9 @@ def semi_parse_argv(argv: List[str]) -> Dict[str, str]:
     cli argument are not passed correcltys
 
     """
+
+    argv_copy = argv.copy()
+
     argv.pop(0)  # first argument beeing the name of the program
 
     semi_parse_arg = dict()
@@ -30,7 +35,15 @@ def semi_parse_argv(argv: List[str]) -> Dict[str, str]:
         arg_name = argv.pop(0)
 
         if not arg_name.startswith("--"):
-            raise CliArgError(f"{arg_name} is not a valid argument, try {arg_name}")
+            cli_passed = "python " + " ".join(argv_copy)
+            if arg_name.startswith("-"):
+                arg_suggestion = arg_name.replace("-", "--")
+            else:
+                arg_suggestion = f"--{arg_name}"
+
+            bold_arg_name = f"[bold]{arg_suggestion}[/bold]"
+            cli_suggestion = cli_passed.replace(arg_name, bold_arg_name)
+            raise CliArgError(f"{arg_name} is not a valid. You should try: \n \n{cli_suggestion}")
 
         if len(argv) == 0:  # if we end with smth like python cmd.py ---aa a --hello
             bool_arg = True
@@ -106,4 +119,10 @@ def parse_argv() -> NestedDict:
     Parse argument from argv and return a nested dict of string arguments that can be
     used to instantiate a pydantic model.
     """
-    return parse_argv_as_list(list(sys.argv))  # need list otherwise it consume sys.argv for other tool like wandb
+    try:
+        return parse_argv_as_list(list(sys.argv))  # need list otherwise it consume sys.argv for other tool like wandb
+    except CliArgError as e:
+        msg = f"[white]{e}[/white]"
+        panel = _get_error_panel(msg, 1)
+        rich_print(panel)
+        sys.exit(1)

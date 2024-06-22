@@ -4,13 +4,12 @@ from functools import wraps
 
 
 from pydantic_config.parse import parse_argv
+from pydantic_config._ui import _get_error_panel
 from pydantic import BaseModel as PydanticBaseModel, ValidationError
 from pydantic import validate_call as pydantic_validate_call
 from pydantic import ConfigDict
 
 from rich import print as rich_print
-from rich.panel import Panel
-from rich import box
 
 
 class BaseConfig(PydanticBaseModel):
@@ -27,18 +26,6 @@ def _recreate_cli_arg(loc: list[str], input) -> str:
         return "--no-" + cli_cmd
     else:
         return "--" + cli_cmd + f" {input}"
-
-
-def _get_error_panel(error: str, n_errors: int) -> Panel:
-    # inspired from cyclopts https://github.com/BrianPugh/cyclopts/blob/a6489e6f6e7e1b555c614f2fa93a13191718d44b/cyclopts/exceptions.py#L318
-    return Panel(
-        error,
-        title=f"{n_errors} errors",
-        box=box.ROUNDED,
-        expand=True,
-        title_align="left",
-        style="red",
-    )
 
 
 @wraps(pydantic_validate_call)
