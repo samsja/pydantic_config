@@ -96,6 +96,29 @@ You can use it like this
 python examples/nested_cli.py --train.batch_size 32 --data.path ~/datasets
 ```
 
+
+## Yet another cli parser / config manager in python ?
+
+Yes sorry, but this one will stay as simple as possible. Arg to dict to pydantic. 
+
+###  Why ?
+
+Because I have been tired of the different cli tool and config manager in the python ecosystem. I want to let [Pydantic](https://docs.pydantic.dev/latest/) handle all of the validation and coercion logic (because it is doing it great), I just need a simple tool that can
+generate a dict from the cli arguments and/or a json file and pass it pydantic.
+
+Pydantic_config is what most of the cli/config tool would have been if pydantic would have been released earlier.
+
+Honorable mention to the tool that I used in the past:
+
+* [Typer](https://typer.tiangolo.com/)
+* [cyclopts](https://github.com/BrianPugh/cyclopts)
+* [click](https://click.palletsprojects.com/en/8.0.x/cli/)
+* [fire](https://github.com/google/python-fire)
+* [jsonargparse](https://github.com/omni-us/jsonargparse)
+
+
+
+
 ## CLI syntax
 
 Pydantic config accept argument with two leading minus `-`.
@@ -148,29 +171,6 @@ To pass as list, just a repeat the argument
 python main.py --my-list value1 --my-list value2
 >>> {"my_list": ["value1", "value2"]}
 ```
-
-## Why ?
-
-Because I have been tired of the different cli tool and config manager in the python ecosystem. I want to let [Pydantic](https://docs.pydantic.dev/latest/) handle all of the validation and coercion logic (because it is doing it great), I just need a simple tool that can
-generate a dict from the cli arguments and/or a json file and pass it pydantic.
-
-Pydantic_config is what most of the cli/config tool would have been if pydantic would have been released earlier.
-
-Honorable mention to the tool that I used in the past:
-
-* [Typer](https://typer.tiangolo.com/)
-* [cyclopts](https://github.com/BrianPugh/cyclopts)
-* [click](https://click.palletsprojects.com/en/8.0.x/cli/)
-* [fire](https://github.com/google/python-fire)
-* [jsonargparse](https://github.com/omni-us/jsonargparse)
-
-
-
-
-## Yet another cli parser in python ?
-
-Yes sorry, but this one will stay as simple as possible. Arg to dict to pydantic. 
-
 
 ## Development
 
