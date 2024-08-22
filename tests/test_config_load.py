@@ -52,3 +52,28 @@ def test_override_config_file_post(tmp_file):
 
     argv = ["main.py", "--hey.foo", "world", "--hey", f"@{tmp_file}"]
     assert parse_argv_as_list(argv) == {"hey": {"foo": "world", "abc": "xyz"}}
+
+
+def test_sub_config_file(tmp_file):
+    config_dot_json = """
+    {
+        "foo": "bar"
+    }
+    """
+    string_to_file(tmp_file, config_dot_json)
+
+    argv = ["main.py", "--abc.xyz", "world", "--abc.ijk", f"@{tmp_file}"]
+
+    assert parse_argv_as_list(argv) == {"abc": {"xyz": "world", "ijk": {"foo": "bar"}}}
+
+
+def test_sub_config_file_override(tmp_file):
+    config_dot_json = """
+    {
+        "foo": "bar"
+    }
+    """
+    string_to_file(tmp_file, config_dot_json)
+
+    argv = ["main.py", "--abc.ijk", f"@{tmp_file}", "--abc.ijk.foo", "world"]
+    assert parse_argv_as_list(argv) == {"abc": {"ijk": {"foo": "world"}}}

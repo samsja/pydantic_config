@@ -151,6 +151,7 @@ def merge_args_and_load_config(args: Dict[str, str], nested_args: NestedDict) ->
                 raise CliArgError(
                     f"Conflicting argument: {conflicting_key}. You cannot use both --{conflicting_key} and --{conflicting_key}.{first_arg_name} at the same time"
                 )
+
     for key in list(args.keys()):  # list because we might edit the dict
         if isinstance(args[key], str) and args[key].startswith(CONFIG_FILE_SYMBOL):
             args[key] = load_config_file(args[key][len(CONFIG_FILE_SYMBOL) :])
@@ -182,6 +183,9 @@ def parse_nested_arg(args: Dict[str, str]) -> NestedDict:
                 value_nested = parse_nested_arg({".".join(splits[1:]): value})
                 nested_args[root_arg_name] = merge_nested_dict(nested_args[root_arg_name], value_nested)
             else:
+                if isinstance(value, str) and value.startswith(CONFIG_FILE_SYMBOL):
+                    value = load_config_file(value[len(CONFIG_FILE_SYMBOL) :])
+
                 nested_args[root_arg_name][nested_arg_name] = value
 
             del args[arg_name]
