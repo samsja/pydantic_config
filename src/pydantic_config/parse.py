@@ -76,13 +76,6 @@ def semi_parse_argv(argv: List[str]) -> Dict[str, str]:
 
     it replace "_" with "-" as well and might raise CliArgError or CliValueError if
     cli argument are not passed correcltys
-
-    It look at the first argument and if it start with @ it try to load the file as a json file.
-
-    Example:
-
-    >>> semi_parse_argv(["main.py", "--foo", "@config.json", "--hello", "world"]) == {"foo": {"bar": "baz"}, "hello": "world"}
-    assuming the content of config.json is {"bar": "baz"}
     """
 
     argv_copy = argv.copy()
@@ -120,9 +113,6 @@ def semi_parse_argv(argv: List[str]) -> Dict[str, str]:
         else:
             value = argv.pop(0)
 
-        if value.startswith(CONFIG_FILE_SYMBOL):
-            value = load_config_file(value[len(CONFIG_FILE_SYMBOL) :])
-
         arg_name_wo_trailing_dash = arg_name[2:]  # remove the leading --
         arg_name_wo_trailing_dash = arg_name_wo_trailing_dash.replace("-", "_")
         # python variable name cannot have - inside, but it is commonly used in cli
@@ -136,6 +126,36 @@ def semi_parse_argv(argv: List[str]) -> Dict[str, str]:
             semi_parse_arg[arg_name_wo_trailing_dash] = value
 
     return semi_parse_arg
+
+
+def merge_args_and_load_config(args: Dict[str, str], nested_args: NestedDict) -> NestedDict:
+    """
+    handle merging of top lever args and nested args.
+    Optionaly load config file if necessary.
+
+    cli override config file. Otherwise conflict will raise an error.
+    """
+    # assert interesction of the keyu of args and nested_args is null
+    conflicting_keys = list(set(args.keys()) & set(nested_args.keys()))
+    if conflicting_keys:
+        for conflicting_key in conflicting_keys:
+            if args[conflicting_key].startswith(CONFIG_FILE_SYMBOL):
+                args_from_config = load_config_file(args[conflicting_key][len(CONFIG_FILE_SYMBOL) :])
+                args_from_cli = nested_args[conflicting_key]
+                args_from_config.update(args_from_cli)
+
+                del args[conflicting_key]
+                nested_args[conflicting_key] = args_from_config
+            else:
+                first_arg_name = list(nested_args[conflicting_key].keys())[0]
+                raise CliArgError(
+                    f"Conflicting argument: {conflicting_key}. You cannot use both --{conflicting_key} and --{conflicting_key}.{first_arg_name} at the same time"
+                )
+    for key in list(args.keys()):  # list because we might edit the dict
+        if isinstance(args[key], str) and args[key].startswith(CONFIG_FILE_SYMBOL):
+            args[key] = load_config_file(args[key][len(CONFIG_FILE_SYMBOL) :])
+
+    return {**args, **nested_args}
 
 
 def parse_nested_arg(args: Dict[str, str]) -> NestedDict:
@@ -166,15 +186,7 @@ def parse_nested_arg(args: Dict[str, str]) -> NestedDict:
 
             del args[arg_name]
 
-    # assert interesction of the keyu of args and nested_args is null
-    conflicting_keys = list(set(args.keys()) & set(nested_args.keys()))
-    if conflicting_keys:
-        conflicting_key = conflicting_keys[0]
-        first_arg_name = list(nested_args[conflicting_key].keys())[0]
-        raise CliArgError(
-            f"Conflicting argument: {conflicting_key}. You cannot use both --{conflicting_key} and --{conflicting_key}.{first_arg_name} at the same time"
-        )
-    return {**args, **nested_args}
+    return merge_args_and_load_config(args, nested_args)
 
 
 def parse_argv_as_list(argv: List[str]) -> NestedDict:
