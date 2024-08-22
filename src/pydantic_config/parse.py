@@ -166,6 +166,14 @@ def parse_nested_arg(args: Dict[str, str]) -> NestedDict:
 
             del args[arg_name]
 
+    # assert interesction of the keyu of args and nested_args is null
+    conflicting_keys = list(set(args.keys()) & set(nested_args.keys()))
+    if conflicting_keys:
+        conflicting_key = conflicting_keys[0]
+        first_arg_name = list(nested_args[conflicting_key].keys())[0]
+        raise CliArgError(
+            f"Conflicting argument: {conflicting_key}. You cannot use both --{conflicting_key} and --{conflicting_key}.{first_arg_name} at the same time"
+        )
     return {**args, **nested_args}
 
 

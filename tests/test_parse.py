@@ -34,3 +34,9 @@ def test_list():
 def test_nested_list():
     argv = ["main.py", "--hello.world", "world", "--foo", "bar", "--hello.world", "universe"]
     assert parse_argv_as_list(argv) == {"hello": {"world": ["world", "universe"]}, "foo": "bar"}
+
+
+def test_nested_conflict():
+    with pytest.raises(CliArgError):
+        argv = ["main.py", "--hello.world", "world", "--hello", "galaxy"]
+        parse_argv_as_list(argv)
