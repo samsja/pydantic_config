@@ -174,7 +174,21 @@ python main.py --my-list value1 --my-list value2
 
 ## Development
 
-This project use [rye](https://github.com/astral-sh/rye) to manage python.
+This project use [uv](https://github.com/astral-sh/uv) to manage python.
+
+update your env with the right dev env
+
+```bash
+uv venv
+uv sync
+```
+
+Run test with 
+
+```bash
+uv run pytest -vv
+```
+
 
 
 ## todo list
