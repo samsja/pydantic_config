@@ -4,12 +4,46 @@ import sys
 
 from rich import print as rich_print
 
-
-from pydantic_config.error import CliArgError
-from pydantic_config.nested_dict import merge_nested_dict
 from pydantic_config._ui import _get_error_panel
 
+
+class PydantiCliError(ValueError): ...
+
+
+class CliArgError(PydantiCliError): ...
+
+
+class CliValueError(PydantiCliError): ...
+
+
+class DuplicateKeyError(PydantiCliError): ...
+
+
 NestedDict: TypeAlias = Dict[str, "NestedDict"]
+
+
+def merge_nested_dict(left_dict: NestedDict, right_dict: NestedDict) -> NestedDict:
+    """
+    this function take two nested dict and merge them together.
+    """
+
+    if not isinstance(left_dict, dict) or not isinstance(right_dict, dict):
+        raise TypeError("left_dict and right_dict must be dict")
+
+    shared_key = [key for key in left_dict.keys() if key in right_dict.keys()]
+
+    current_dict_non_shared = {k: v for k, v in left_dict.items() if k not in shared_key}
+    new_branch_non_shared = {k: v for k, v in right_dict.items() if k not in shared_key}
+
+    merged_dict = {**current_dict_non_shared, **new_branch_non_shared}
+
+    for key in shared_key:
+        if not isinstance(left_dict[key], dict) or not isinstance(right_dict[key], dict):
+            raise DuplicateKeyError(f"{key} is duplicated")
+
+        merged_dict[key] = merge_nested_dict(left_dict[key], right_dict[key])
+
+    return merged_dict
 
 
 def semi_parse_argv(argv: List[str]) -> Dict[str, str]:

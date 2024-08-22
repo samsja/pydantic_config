@@ -1,5 +1,5 @@
 import pytest
-from pydantic_config.error import CliArgError
+from pydantic_config.parse import CliArgError
 from pydantic_config.parse import parse_argv_as_list
 
 

@@ -1,8 +1,6 @@
 import pytest
 
-from pydantic_config.error import DuplicateKeyError, CliArgError
-from pydantic_config.nested_dict import merge_nested_dict
-from pydantic_config.parse import parse_nested_arg
+from pydantic_config.parse import DuplicateKeyError, CliArgError, merge_nested_dict, parse_nested_arg
 
 
 @pytest.mark.parametrize(
