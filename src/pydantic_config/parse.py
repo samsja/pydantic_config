@@ -1,4 +1,5 @@
 from collections import defaultdict
+import json
 from typing import Dict, List, TypeAlias
 import sys
 
@@ -20,6 +21,8 @@ class DuplicateKeyError(PydantiCliError): ...
 
 
 NestedDict: TypeAlias = Dict[str, "NestedDict"]
+
+CONFIG_FILE_SYMBOL = "@"
 
 
 def merge_nested_dict(left_dict: NestedDict, right_dict: NestedDict) -> NestedDict:
@@ -46,6 +49,23 @@ def merge_nested_dict(left_dict: NestedDict, right_dict: NestedDict) -> NestedDi
     return merged_dict
 
 
+def load_config_file(file_path: str) -> NestedDict:
+    """
+    take a file path load the content into a python dict.
+
+    For now expect the file to be a json file.
+
+    Later will add yaml and toml support.
+    """
+    try:
+        with open(file_path, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        raise CliValueError(f"File {file_path} not found")
+    except json.JSONDecodeError:
+        raise CliValueError(f"Error when parsing {file_path} as json")
+
+
 def semi_parse_argv(argv: List[str]) -> Dict[str, str]:
     """
     this parse sys.argv into a dict of key value without any reduce.
@@ -57,6 +77,12 @@ def semi_parse_argv(argv: List[str]) -> Dict[str, str]:
     it replace "_" with "-" as well and might raise CliArgError or CliValueError if
     cli argument are not passed correcltys
 
+    It look at the first argument and if it start with @ it try to load the file as a json file.
+
+    Example:
+
+    >>> semi_parse_argv(["main.py", "--foo", "@config.json", "--hello", "world"]) == {"foo": {"bar": "baz"}, "hello": "world"}
+    assuming the content of config.json is {"bar": "baz"}
     """
 
     argv_copy = argv.copy()
@@ -93,6 +119,9 @@ def semi_parse_argv(argv: List[str]) -> Dict[str, str]:
 
         else:
             value = argv.pop(0)
+
+        if value.startswith(CONFIG_FILE_SYMBOL):
+            value = load_config_file(value[len(CONFIG_FILE_SYMBOL) :])
 
         arg_name_wo_trailing_dash = arg_name[2:]  # remove the leading --
         arg_name_wo_trailing_dash = arg_name_wo_trailing_dash.replace("-", "_")
