@@ -1,30 +1,22 @@
 [project]
 name = "pydantic-config"
 version = "0.1.0"
-description = "Add your description here"
+description = "cli and config for ml using pydantic"
 authors = [
     { name = "Sami Jaghouar", email = "sami.jaghouar@gmail.com" }
 ]
-dependencies = ["pydantic>=2.0.0", "rich"]
+dependencies = [
+    "pydantic>=2.0.0",
+    "rich",
+]
 readme = "README.md"
 requires-python = ">= 3.10"
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
 
-[tool.rye]
-managed = true
-dev-dependencies = ["pytest>=7.0.0", "pre-commit>=3.0.0"]
-
-[tool.hatch.metadata]
-allow-direct-references = true
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/pydantic_config"]
-
-[tool.hatch.version]
-path = "src/pydantic_config/__init__.py"
 
 [tool.ruff]
 line-length = 120 
+
+[tool.uv]
+dev-dependencies = ["ruff==0.5.0", "pre-commit>=3.0.0","pytest>=7.0.0"]
+
