@@ -14,16 +14,23 @@ class CliError(PydanticConfigError):
         self.error_msg = error_msg
         self._program_name = None
 
-    def error_list_args(self):
-        bold_error = []
+    def get_input_and_suggestion(self):
+        input_ = []
+        suggestion = []
         for i, arg in enumerate(self.args):
             if i in self.wrong_index:
-                bold_error.append(f"[red][bold]{arg}[/bold][/red]")
+                input_.append(f"[red][bold]{arg}[/bold][/red]")
+                if self.suggestion:
+                    suggestion.append(f"[green][bold]{self.suggestion[i]}[/bold][/green]")
             else:
-                bold_error.append(arg)
+                input_.append(arg)
+                if self.suggestion:
+                    suggestion.append(self.suggestion[i])
 
-        error_msg = "[white]" + self.program_name + " " + " ".join(bold_error) + "[/white]"
-        return error_msg
+        input_ = self.program_name + " " + " ".join(input_)
+        if self.suggestion:
+            suggestion = self.program_name + " " + " ".join(suggestion)
+        return input_, suggestion
 
     def _render_with_rich(self):
         # inspired from cyclopts https://github.com/BrianPugh/cyclopts/blob/a6489e6f6e7e1b555c614f2fa93a13191718d44b/cyclopts/exceptions.py#L318
@@ -35,9 +42,10 @@ class CliError(PydanticConfigError):
         console.print("\n" + self.error_msg, style="red")
         console.print("-" * console.width + "\n", style="red")
 
-        console.print("[red]Input:[/red] \n" + self.error_list_args())
+        input_, suggestion = self.get_input_and_suggestion()
+        console.print("[red]Input:[/red] \n" + input_)
         if self.suggestion:
-            console.print(" \n[green]Suggestion:[/green] \n" + self.program_name + " " + " ".join(self.suggestion))
+            console.print(" \n[green]Suggestion:[/green] \n" + suggestion)
 
         console.print("\n" + "-" * console.width, style="red")
 
