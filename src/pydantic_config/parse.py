@@ -158,6 +158,9 @@ def parse_args(args: list[str]) -> NestedArgs:
                                 raise CliError(args_original, [i], f"Conflicting boolean flag for {name}", [])
 
                     elif isinstance(arg, dict):
+                        if not isinstance(new_arg, dict):
+                            raise CliError(args_original, [i], f"Conflicting boolean flag for {name}", [])
+
                         nested_arg_name = list(right[name].keys())[0]
                         merge_dict(nested_arg_name, left[name], right[name])
                     else:
