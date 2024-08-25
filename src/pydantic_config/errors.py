@@ -56,3 +56,6 @@ class CliError(PydanticConfigError):
     @program_name.setter
     def program_name(self, program_name: str):
         self._program_name = program_name
+
+
+class MergedConflictError(PydanticConfigError): ...
