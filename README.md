@@ -192,7 +192,13 @@ uv run pytest -vv
 to work on error messaging do:
 
 ``bash
-uv run python src/pydantic_config/errors.py
+uv run python tests/ui_testing.py --foo bar
+```
+
+You can see all the error message by doing
+
+```bash
+./tests/saw_error_message.sh
 ```
 
 

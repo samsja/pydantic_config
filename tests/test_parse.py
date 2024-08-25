@@ -3,6 +3,29 @@ from pydantic_config.errors import CliError
 from pydantic_config.parse import parse_args
 
 
+def test_no_starting_with_correct_prefix():
+    argv = ["main.py", "world"]
+    with pytest.raises(CliError):
+        parse_args(argv)
+
+
+## bool
+
+
+def test_bool():
+    argv = ["main.py", "--hello", "--no-foo", "--no-bar"]
+    assert parse_args(argv) == {"hello": True, "foo": False, "bar": False}
+
+
+def test_bool_not_follow_value():
+    argv = ["main.py", "--no-hello", "world"]
+    with pytest.raises(CliError):
+        parse_args(argv)
+
+
+## old test for legacy
+
+
 @pytest.mark.parametrize("arg", ["hello", "-hello"])
 def test_no_underscor_arg_failed(arg):
     argv = ["main.py", arg]
@@ -19,11 +42,6 @@ def test_correct_arg_passed():
 def test_python_underscor_replace():
     argv = ["main.py", "--hello-world", "hye", "--foo_bar", "bar"]
     assert parse_args(argv) == {"hello_world": "hye", "foo_bar": "bar"}
-
-
-def test_bool():
-    argv = ["main.py", "--hello", "--no-foo", "--no-bar"]
-    assert parse_args(argv) == {"hello": True, "foo": False, "bar": False}
 
 
 def test_list():
