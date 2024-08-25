@@ -4,7 +4,7 @@ from pydantic_config.parse import parse_args
 
 
 def test_no_starting_with_correct_prefix():
-    argv = ["main.py", "world"]
+    argv = ["world"]
     with pytest.raises(CliError):
         parse_args(argv)
 
@@ -13,14 +13,19 @@ def test_no_starting_with_correct_prefix():
 
 
 def test_bool():
-    argv = ["main.py", "--hello", "--no-foo", "--no-bar"]
+    argv = ["--hello", "--no-foo", "--no-bar"]
     assert parse_args(argv) == {"hello": True, "foo": False, "bar": False}
 
 
 def test_bool_not_follow_value():
-    argv = ["main.py", "--no-hello", "world"]
+    argv = ["--no-hello", "world"]
     with pytest.raises(CliError):
         parse_args(argv)
+
+
+def test_nested_list():
+    argv = ["--hello.world", "world", "--foo", "bar", "--hello.world", "universe"]
+    assert parse_args(argv) == {"hello": {"world": ["world", "universe"]}, "foo": "bar"}
 
 
 ## old test for legacy
@@ -28,33 +33,28 @@ def test_bool_not_follow_value():
 
 @pytest.mark.parametrize("arg", ["hello", "-hello"])
 def test_no_underscor_arg_failed(arg):
-    argv = ["main.py", arg]
+    argv = [arg]
 
     with pytest.raises(CliError):
         parse_args(argv)
 
 
 def test_correct_arg_passed():
-    argv = ["main.py", "--hello", "world", "--foo", "bar"]
+    argv = ["--hello", "world", "--foo", "bar"]
     assert parse_args(argv) == {"hello": "world", "foo": "bar"}
 
 
 def test_python_underscor_replace():
-    argv = ["main.py", "--hello-world", "hye", "--foo_bar", "bar"]
+    argv = ["--hello-world", "hye", "--foo_bar", "bar"]
     assert parse_args(argv) == {"hello_world": "hye", "foo_bar": "bar"}
 
 
 def test_list():
-    argv = ["main.py", "--hello", "world", "--foo", "bar", "--hello", "universe"]
+    argv = ["--hello", "world", "--foo", "bar", "--hello", "universe"]
     assert parse_args(argv) == {"hello": ["world", "universe"], "foo": "bar"}
-
-
-def test_nested_list():
-    argv = ["main.py", "--hello.world", "world", "--foo", "bar", "--hello.world", "universe"]
-    assert parse_args(argv) == {"hello": {"world": ["world", "universe"]}, "foo": "bar"}
 
 
 def test_nested_conflict():
     with pytest.raises(CliError):
-        argv = ["main.py", "--hello.world", "world", "--hello", "galaxy"]
+        argv = ["--hello.world", "world", "--hello", "galaxy"]
         parse_args(argv)

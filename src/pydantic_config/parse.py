@@ -1,15 +1,26 @@
 from __future__ import annotations
 import copy
-from typing import Dict, List, TypeAlias
+from typing import TypeAlias
 import sys
 from pydantic_config.errors import CliError
 
 RawValue: TypeAlias = str | bool
 
-NestedArgs: TypeAlias = Dict[str, "NestedArgs"]
+
+class Value:
+    """
+    Hold a value as well as a priority info
+    """
+
+    def __init__(self, value: RawValue, priority: int):
+        self.value = value
+        self.priority = priority
 
 
-class NamedArg:
+NestedArgs: TypeAlias = dict[str, "NestedArgs"]  # dict[str, "NestedArgs" | Value]
+
+
+def parse_nested_args(arg_name: str, value: RawValue) -> NestedArgs:
     """
     Take an arg_name and a value and return a nested dictionary.
 
@@ -17,42 +28,42 @@ class NamedArg:
 
     Example:
 
+    >>> parse_nested_args("a.b.c.d", "value")
+    {"a": {"b": {"c": {"d": "value"}}}}
     """
+    if "." not in arg_name:
+        return {arg_name: value}
+    else:
+        left_name, *rest = arg_name.split(".")
+        rest = ".".join(rest)
+        return {left_name: parse_nested_args(rest, value)}
 
-    def __init__(self, arg_name: str, value: RawValue | NamedArg, priority: bool = False):
+
+def normalize_arg_name(arg_name: str) -> str:
+    """remove prefix are replaced - with _"""
+    arg_name = copy.deepcopy(arg_name)
+    if arg_name.startswith("--no-"):
+        arg_name = arg_name.removeprefix("--no-")
+    else:
         arg_name = arg_name.removeprefix("--")
-        arg_name = arg_name.replace("-", "_")
-        self.priority = priority
 
-        self.name, self.value = self.process_nested_args(arg_name, value)
+    arg_name = arg_name.replace("-", "_")
+    return arg_name
 
-    def process_nested_args(self, arg_name: str, value: RawValue) -> tuple[str, RawValue | NamedArg]:
-        """
-        Take an arg_name and a value and return a nested dictionary.
 
-        Mainly look for nested dot notation in the arg_name and unest it if needed.
-
-        Example:
-
-        """
-        if "." not in arg_name:
-            return arg_name, value
+def unwrap_value(args: NestedArgs) -> NestedArgs:
+    """
+    Look for value as leaf in a nested args and cast to its content
+    """
+    for key, value in args.items():
+        if isinstance(value, Value):
+            args[key] = value.value
         else:
-            new_value: RawValue | NamedArg = value
-            # a.b.c.d
-            nested_args_name = arg_name.split(".")
-            nested_args_name.reverse()
-            # here we go in reverse and create first d:value then c:(d:value) ...
-            for name in nested_args_name[:-1]:
-                new_value = NamedArg(name, new_value)
-            # until the end where we return a , b:(c:(d:value))
-            return arg_name[0], new_value
-
-    def __repr__(self) -> str:
-        return f"{self.name} : {str(self.value)}"
+            unwrap_value(value)
+    return args
 
 
-def parse_args(args: List[str]) -> NestedArgs:
+def parse_args(args: list[str]) -> NestedArgs:
     """
     Parse and validated a list of raw arguments.
 
@@ -65,7 +76,7 @@ def parse_args(args: List[str]) -> NestedArgs:
     args = copy.deepcopy(args)
     suggestion_args = copy.deepcopy(args)
 
-    parsed_named_args: list[NamedArg] = []
+    merged_args = {}
 
     i = 0
 
@@ -106,11 +117,49 @@ def parse_args(args: List[str]) -> NestedArgs:
                 suggestion_args[i + 1] = "--" + arg_name.removeprefix("--no-")
                 raise CliError(args_original, [i, i + 1], error_msg, suggestion_args)
 
-            parsed_named_args.append(NamedArg(arg_name, value))
+            arg_name = normalize_arg_name(arg_name)
+            value = Value(value, priority=1)  # command line argument are priority over config file
+            parsed_arg = parse_nested_args(arg_name, value)
+            top_name = list(parsed_arg.keys())[0]
+
+            def merge_dict(name, left, right):
+                if name not in left.keys():
+                    left[name] = right[name]
+                else:
+                    arg = left[name]
+                    new_arg = right[name]
+                    if isinstance(arg, Value):
+                        if not isinstance(new_arg, Value):
+                            raise CliError(args_original, [i], f"Conflicting value for {name}", [])
+                        if isinstance(arg.value, bool):
+                            if isinstance(new_arg.value, bool):
+                                if new_arg.priority > arg.priority:
+                                    left[name] = new_arg
+                                else:
+                                    raise CliError(args_original, [i], f"Conflicting boolean flag for {name}", [])
+                        if isinstance(new_arg.value, str):
+                            if new_arg.priority > arg.priority:
+                                left[name] = new_arg
+                            elif new_arg.priority < arg.priority:
+                                ...
+                            else:
+                                # if we get mutiple non bool arg we put them into a list
+                                if isinstance(arg.value, str):
+                                    arg.value = [arg.value]
+
+                                arg.value.append(new_arg.value)
+                    elif isinstance(arg, dict):
+                        nested_arg_name = list(right[name].keys())[0]
+                        merge_dict(nested_arg_name, left[name], right[name])
+                    else:
+                        # should never arrive here
+                        raise ValueError()
+
+            merge_dict(top_name, merged_args, parsed_arg)
 
             i += increment
-
-    return parsed_named_args
+    merge_dict
+    return unwrap_value(merged_args)
 
 
 def parse_argv() -> NestedArgs:
