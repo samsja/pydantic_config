@@ -110,7 +110,7 @@ def parse_args(args: list[str]) -> NestedArgs:
 
             if value is not None and arg_name.startswith("--no-"):
                 error_msg = "Boolean flag starting with '--no-' cannot be follow by a argument value"
-                suggestion_args[i + 1] = "--" + arg_name.removeprefix("--no-")
+                suggestion_args[i] = "--" + arg_name.removeprefix("--no-")
                 raise CliError(args_original, [i, i + 1], error_msg, suggestion_args)
 
             if value is None:
