@@ -1,6 +1,7 @@
 import pytest
-from pydantic_config.parse import parse_argv_as_list
-from pydantic_config import BaseConfig, validate_call
+from pydantic_config.parse import parse_args
+from pydantic_config import BaseConfig
+from pydantic import validate_call
 
 
 def test_cli_to_pydantic():
@@ -10,7 +11,7 @@ def test_cli_to_pydantic():
 
     argv = ["main.py", "--hello", "world", "--world", "1"]
 
-    arg_parsed = parse_argv_as_list(argv)
+    arg_parsed = parse_args(argv)
     assert arg_parsed == {"hello": "world", "world": "1"}
 
     arg_validated = Foo(**arg_parsed)
@@ -42,7 +43,7 @@ def test_complex_pydantic():
         "--bar",
         "hello",
     ]
-    arg_parsed = parse_argv_as_list(argv)
+    arg_parsed = parse_args(argv)
 
     arg_validated = MainModel(**arg_parsed)
 
@@ -63,18 +64,14 @@ def test_validate_function():
         assert config.world == 1
         assert a == "b"
 
-    arg_parsed = parse_argv_as_list(
-        ["main.py", "--a", "b", "--config.hello", "hello", "--config.world", "1"]
-    )
+    arg_parsed = parse_args(["main.py", "--a", "b", "--config.hello", "hello", "--config.world", "1"])
     foo(**arg_parsed)
 
     with pytest.raises(AssertionError):
-        arg_parsed = parse_argv_as_list(
-            ["main.py", "--a", "b", "--config.hello", "nooo", "--config.world", "1"]
-        )
+        arg_parsed = parse_args(["main.py", "--a", "b", "--config.hello", "nooo", "--config.world", "1"])
         foo(**arg_parsed)
 
     with pytest.raises(SystemExit) as e:
-        arg_parsed = parse_argv_as_list(["main.py", "--a", "b", "--config.world", "1"])
+        arg_parsed = parse_args(["main.py", "--a", "b", "--config.world", "1"])
         foo(**arg_parsed)
     assert e.value.code == 1
