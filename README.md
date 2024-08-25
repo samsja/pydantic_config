@@ -189,6 +189,12 @@ Run test with
 uv run pytest -vv
 ```
 
+to work on error messaging do:
+
+``bash
+uv run python src/pydantic_config/errors.py
+```
+
 
 
 ## todo list
