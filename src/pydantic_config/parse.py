@@ -108,14 +108,14 @@ def parse_args(args: list[str]) -> NestedArgs:
                     value = arg_value
                     increment = 2  # we want to analyse --foo next
 
-            if value is None:
-                # if it start with --no then value is False else True
-                value = not (arg_name.startswith("--no-"))
-
             if value is not None and arg_name.startswith("--no-"):
                 error_msg = "Boolean flag starting with '--no-' cannot be follow by a argument value"
                 suggestion_args[i + 1] = "--" + arg_name.removeprefix("--no-")
                 raise CliError(args_original, [i, i + 1], error_msg, suggestion_args)
+
+            if value is None:
+                # if it start with --no then value is False else True
+                value = not (arg_name.startswith("--no-"))
 
             arg_name = normalize_arg_name(arg_name)
             value = Value(value, priority=1)  # command line argument are priority over config file

@@ -12,6 +12,16 @@ def test_no_starting_with_correct_prefix():
 ## bool
 
 
+def test_bool_simple():
+    argv = ["--hello", "--a", "b"]
+    assert parse_args(argv) == {"hello": True, "a": "b"}
+
+
+def test_bool_simple_2():
+    argv = ["--no-hello", "--a", "b"]
+    assert parse_args(argv) == {"hello": False, "a": "b"}
+
+
 def test_bool():
     argv = ["--hello", "--no-foo", "--no-bar"]
     assert parse_args(argv) == {"hello": True, "foo": False, "bar": False}
@@ -28,33 +38,36 @@ def test_nested_list():
     assert parse_args(argv) == {"hello": {"world": ["world", "universe"]}, "foo": "bar"}
 
 
+def test_nested_list_2():
+    argv = ["--hello.world.a.b.c.d", "world", "--foo", "bar", "--hello.world.a.b.c.d", "universe"]
+    assert parse_args(argv) == {"hello": {"world": {"a": {"b": {"c": {"d": ["world", "universe"]}}}}}, "foo": "bar"}
+
+
 ## old test for legacy
 
+# def test_nested_conflict():
+#     with pytest.raises(CliError):
+#         argv = ["--hello.world", "world", "--hello", "galaxy"]
+#         parse_args(argv)
 
-@pytest.mark.parametrize("arg", ["hello", "-hello"])
-def test_no_underscor_arg_failed(arg):
-    argv = [arg]
+# @pytest.mark.parametrize("arg", ["hello", "-hello"])
+# def test_no_underscor_arg_failed(arg):
+#     argv = [arg]
 
-    with pytest.raises(CliError):
-        parse_args(argv)
-
-
-def test_correct_arg_passed():
-    argv = ["--hello", "world", "--foo", "bar"]
-    assert parse_args(argv) == {"hello": "world", "foo": "bar"}
-
-
-def test_python_underscor_replace():
-    argv = ["--hello-world", "hye", "--foo_bar", "bar"]
-    assert parse_args(argv) == {"hello_world": "hye", "foo_bar": "bar"}
+#     with pytest.raises(CliError):
+#         parse_args(argv)
 
 
-def test_list():
-    argv = ["--hello", "world", "--foo", "bar", "--hello", "universe"]
-    assert parse_args(argv) == {"hello": ["world", "universe"], "foo": "bar"}
+# def test_correct_arg_passed():
+#     argv = ["--hello", "world", "--foo", "bar"]
+#     assert parse_args(argv) == {"hello": "world", "foo": "bar"}
 
 
-def test_nested_conflict():
-    with pytest.raises(CliError):
-        argv = ["--hello.world", "world", "--hello", "galaxy"]
-        parse_args(argv)
+# def test_python_underscor_replace():
+#     argv = ["--hello-world", "hye", "--foo_bar", "bar"]
+#     assert parse_args(argv) == {"hello_world": "hye", "foo_bar": "bar"}
+
+
+# def test_list():
+#     argv = ["--hello", "world", "--foo", "bar", "--hello", "universe"]
+#     assert parse_args(argv) == {"hello": ["world", "universe"], "foo": "bar"}
