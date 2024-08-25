@@ -16,6 +16,9 @@ class Value:
         self.value = value
         self.priority = priority
 
+    def __repr__(self) -> str:
+        return f"{self.value} ({self.priority})"
+
 
 NestedArgs: TypeAlias = dict[str, "NestedArgs"]  # dict[str, "NestedArgs" | Value]
 
@@ -138,6 +141,8 @@ def parse_args(args: list[str]) -> NestedArgs:
                                 else:
                                     raise CliError(args_original, [i], f"Conflicting boolean flag for {name}", [])
                         if isinstance(new_arg.value, str):
+                            if not isinstance(arg.value, str):
+                                raise CliError(args_original, [i], f"Conflicting value for {name}", [])
                             if new_arg.priority > arg.priority:
                                 left[name] = new_arg
                             elif new_arg.priority < arg.priority:
@@ -148,6 +153,10 @@ def parse_args(args: list[str]) -> NestedArgs:
                                     arg.value = [arg.value]
 
                                 arg.value.append(new_arg.value)
+                        else:
+                            if isinstance(new_arg.value, bool):
+                                raise CliError(args_original, [i], f"Conflicting boolean flag for {name}", [])
+
                     elif isinstance(arg, dict):
                         nested_arg_name = list(right[name].keys())[0]
                         merge_dict(nested_arg_name, left[name], right[name])
@@ -158,7 +167,7 @@ def parse_args(args: list[str]) -> NestedArgs:
             merge_dict(top_name, merged_args, parsed_arg)
 
             i += increment
-    merge_dict
+
     return unwrap_value(merged_args)
 
 

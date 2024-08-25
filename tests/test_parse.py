@@ -33,6 +33,23 @@ def test_bool_not_follow_value():
         parse_args(argv)
 
 
+def test_bool_conflict():
+    argv = ["--hello", "world", "--hello"]
+    with pytest.raises(CliError):
+        parse_args(argv)
+
+
+## list
+
+
+def test_list():
+    argv = ["--hello", "world", "--foo", "bar", "--hello", "universe"]
+    assert parse_args(argv) == {"hello": ["world", "universe"], "foo": "bar"}
+
+
+## nested
+
+
 def test_nested_list():
     argv = ["--hello.world", "world", "--foo", "bar", "--hello.world", "universe"]
     assert parse_args(argv) == {"hello": {"world": ["world", "universe"]}, "foo": "bar"}
