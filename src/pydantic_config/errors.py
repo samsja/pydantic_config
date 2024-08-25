@@ -2,14 +2,19 @@ import copy
 from importlib.util import find_spec
 
 
-class CliError(BaseException):
-    def __init__(self, args: list[str], wrong_index: list[int]):
+class PydanticConfigError(BaseException): ...
+
+
+class CliError(PydanticConfigError):
+    def __init__(self, args: list[str], wrong_index: list[int], error_msg: str, suggestion: list[str] | None = None):
         super().__init__()
         self.args = copy.deepcopy(args)
         self.wrong_index = wrong_index
+        self.suggestion = suggestion
+        self.error_msg = error_msg
         self._program_name = None
 
-    def error_msg(self):
+    def error_list_args(self):
         bold_error = []
         for i, arg in enumerate(self.args):
             if i in self.wrong_index:
@@ -26,24 +31,23 @@ class CliError(BaseException):
 
         console = Console()
 
-        # Print error header with extra space
         console.print("\nERROR: Invalid argument: ", style="bold red")
+        console.print("\n" + self.error_msg, style="red")
         console.print("-" * console.width + "\n", style="red")
 
-        # Print the error message with extra space
-        console.print(self.error_msg())
+        console.print("[red]Input:[/red] \n" + self.error_list_args())
+        if self.suggestion:
+            console.print(" \n[green]Suggestion:[/green] \n" + self.program_name + " " + " ".join(self.suggestion))
+
         console.print("\n" + "-" * console.width, style="red")
 
-        # Print helpful message with extra space
         console.print("Please check your input and try again.\n", style="yellow")
-
-        # Print bottom separator line
 
     def render(self):
         if find_spec("rich"):
             return self._render_with_rich()
         else:
-            return print(self.error_msg())
+            return print(self.error_msg)
 
     @property
     def program_name(self) -> str:
@@ -52,10 +56,3 @@ class CliError(BaseException):
     @program_name.setter
     def program_name(self, program_name: str):
         self._program_name = program_name
-
-
-if __name__ == "__main__":
-    ## this is just to test vizually the error rendering. As there is no clear way to do this in pytests.
-    e = CliError(["--a", "b", "c", "--c", "--d--"], [2, 3])
-    e.program_name = "test.py"
-    e.render()
