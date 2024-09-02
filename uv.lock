@@ -166,11 +166,16 @@ wheels = [
 
 [[package]]
 name = "pydantic-config"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "pydantic" },
     { name = "rich" },
+]
+
+[package.optional-dependencies]
+yaml = [
+    { name = "pyyaml" },
 ]
 
 [package.dev-dependencies]
@@ -183,6 +188,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "pydantic", specifier = ">=2.0.0" },
+    { name = "pyyaml", marker = "extra == 'yaml'" },
     { name = "rich" },
 ]
 

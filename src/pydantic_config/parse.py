@@ -3,6 +3,8 @@ import copy
 import json
 from typing import TypeAlias
 import sys
+import importlib
+
 from pydantic_config.errors import CliError, InvalidConfigFileError
 
 RawValue: TypeAlias = str | bool
@@ -76,12 +78,24 @@ def load_config_file(path: str, priority: int) -> NestedArgs:
     """
     Load a config file and return a nested dictionary.
     """
+
+    content = None
     try:
         with open(path, "r") as f:
-            try:
-                loaded_json = json.load(f)
-            except json.JSONDecodeError as e:
-                raise InvalidConfigFileError(e)
+            if path.endswith(".json"):
+                try:
+                    content = json.load(f)
+                except json.JSONDecodeError as e:
+                    raise InvalidConfigFileError(e)
+            elif importlib.util.find_spec("yaml") is not None and path.endswith(".yaml") or path.endswith(".yml"):
+                import yaml
+
+                try:
+                    content = yaml.load(f, Loader=yaml.FullLoader)
+                except yaml.YAMLError as e:
+                    raise InvalidConfigFileError(e)
+            else:
+                raise InvalidConfigFileError(f"Unsupported file type: {path}")
     except FileNotFoundError:
         raise InvalidConfigFileError(f"File {path} not found")
 
@@ -93,7 +107,7 @@ def load_config_file(path: str, priority: int) -> NestedArgs:
         else:
             return Value(nested_dict, priority)
 
-    return wrap_value(loaded_json)
+    return wrap_value(content)
 
 
 def parse_args(args: list[str]) -> NestedArgs:
