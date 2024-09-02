@@ -123,7 +123,6 @@ def parse_args(args: list[str]) -> NestedArgs:
             arg_name = normalize_arg_name(arg_name)
             value = Value(value, priority=1)  # command line argument are priority over config file
             parsed_arg = parse_nested_args(arg_name, value)
-            top_name = list(parsed_arg.keys())[0]
 
             def merge_dict(name, left, right):
                 if name not in left.keys():
@@ -163,13 +162,14 @@ def parse_args(args: list[str]) -> NestedArgs:
                         if not isinstance(new_arg, dict):
                             raise CliError(args_original, [i], f"Conflicting boolean flag for {name}", [])
 
-                        nested_arg_name = list(right[name].keys())[0]
-                        merge_dict(nested_arg_name, left[name], right[name])
+                        for nested_arg_name in right[name].keys():
+                            merge_dict(nested_arg_name, left[name], right[name])
                     else:
                         # should never arrive here
                         raise ValueError()
 
-            merge_dict(top_name, merged_args, parsed_arg)
+            for name in parsed_arg.keys():
+                merge_dict(name, merged_args, parsed_arg)
 
             i += increment
 
