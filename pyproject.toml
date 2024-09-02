@@ -16,6 +16,7 @@ requires-python = ">= 3.10"
 [project.optional-dependencies]
 yaml = ["pyyaml"]
 toml = ["tomli"]
+all = ["pyyaml", "tomli"]
 
 [tool.ruff]
 line-length = 120 

@@ -192,6 +192,16 @@ python main.py --train @train_config.yaml
 
 **Note:pydantic_config will look at the file extension to determine the file type.**
 
+If you want to use `toml` or `yaml` file you need to install using 
+```
+pip install .[toml]
+```
+or 
+
+```
+pip install .[yaml]
+```
+
 # Development
 
 This project use [uv](https://github.com/astral-sh/uv) to manage python.
