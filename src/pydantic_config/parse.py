@@ -3,7 +3,7 @@ import copy
 import json
 from typing import TypeAlias
 import sys
-from pydantic_config.errors import CliError
+from pydantic_config.errors import CliError, InvalidConfigFileError
 
 RawValue: TypeAlias = str | bool
 
@@ -76,8 +76,14 @@ def load_config_file(path: str, priority: int) -> NestedArgs:
     """
     Load a config file and return a nested dictionary.
     """
-    with open(path, "r") as f:
-        loaded_json = json.load(f)
+    try:
+        with open(path, "r") as f:
+            try:
+                loaded_json = json.load(f)
+            except json.JSONDecodeError as e:
+                raise InvalidConfigFileError(e)
+    except FileNotFoundError:
+        raise InvalidConfigFileError(f"File {path} not found")
 
     def wrap_value(nested_dict):
         if isinstance(nested_dict, dict):
@@ -146,7 +152,15 @@ def parse_args(args: list[str]) -> NestedArgs:
 
             arg_name = normalize_arg_name(arg_name)
             if isinstance(value, str) and value.startswith(CONFIG_FILE_SIGN):
-                value = load_config_file(value.removeprefix(CONFIG_FILE_SIGN), priority=0)
+                try:
+                    value = load_config_file(value.removeprefix(CONFIG_FILE_SIGN), priority=0)
+                except InvalidConfigFileError as e:
+                    raise CliError(
+                        args_original,
+                        [i, i + 1],
+                        f"Invalid config file [bold]{value.removeprefix(CONFIG_FILE_SIGN)}[/bold]. Original error: {e.original_error}",
+                        [],
+                    )
             else:
                 value = Value(value, priority=1)  # command line are priority over config file
 
