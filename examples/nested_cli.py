@@ -12,10 +12,12 @@ class DataConfig(BaseConfig):
     path: Path
 
 
-def prepare_data(conf: DataConfig): ...  # prepare data
+def prepare_data(conf: DataConfig):
+    print(conf)
 
 
-def train_model(conf: TrainingConfig): ...  # train model
+def train_model(conf: TrainingConfig):
+    print(conf)
 
 
 @validate_call
