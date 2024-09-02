@@ -81,7 +81,7 @@ def load_config_file(path: str, priority: int) -> NestedArgs:
 
     content = None
     try:
-        with open(path, "r") as f:
+        with open(path, "rb") as f:
             if path.endswith(".json"):
                 try:
                     content = json.load(f)
@@ -93,6 +93,13 @@ def load_config_file(path: str, priority: int) -> NestedArgs:
                 try:
                     content = yaml.load(f, Loader=yaml.FullLoader)
                 except yaml.YAMLError as e:
+                    raise InvalidConfigFileError(e)
+            elif importlib.util.find_spec("tomli") is not None and path.endswith(".toml"):
+                import tomli
+
+                try:
+                    content = tomli.load(f)
+                except tomli.TOMLDecodeError as e:
                     raise InvalidConfigFileError(e)
             else:
                 raise InvalidConfigFileError(f"Unsupported file type: {path}")
