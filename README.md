@@ -38,11 +38,6 @@ python simple_cli.py  --hello world --foo bar
 Under the hood, the cli argument are converted to a (nested) dictionary and passed to the function. Pydantic is used to validate
 the argument, eventually coercing the type if needed.
 
-For instance if you passed a wrong parameters:
-
-```bash
-python examples/simple_cli.py --hello world --foo --fooo
-```
 
 
 ## Nested Config 
