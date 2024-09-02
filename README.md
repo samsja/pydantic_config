@@ -63,9 +63,11 @@ class TrainingConfig(BaseConfig):
 class DataConfig(BaseConfig):
     path: Path
 
-def prepare_data(conf: DataConfig): ...  # prepare data
+def prepare_data(conf: DataConfig):
+    print(conf)
 
-def train_model(conf: TrainingConfig): ...  # train model
+def train_model(conf: TrainingConfig):
+    print(conf)
 
 @validate_call
 def main(train: TrainingConfig, data: DataConfig):
@@ -81,8 +83,19 @@ You can use it like this
 
 ```bash
 python examples/nested_cli.py --train.batch_size 32 --data.path ~/datasets
+
+>>> path=PosixPath('/home/sami/datasets')
+>>> lr=0.0003 batch_size=32
 ```
 
+You can as well load config from a json file:
+
+```bash
+python examples/nested_cli.py --train @examples/train_config.json  --data.path ~/datasets
+
+>>> path=PosixPath('/home/sami/datasets')
+>>> lr=0.0003 batch_size=32
+```
 
 ## Yet another cli parser / config manager in python ?
 
@@ -102,7 +115,6 @@ Honorable mention to the tool that I used in the past:
 * [click](https://click.palletsprojects.com/en/8.0.x/cli/)
 * [fire](https://github.com/google/python-fire)
 * [jsonargparse](https://github.com/omni-us/jsonargparse)
-
 
 
 
@@ -150,7 +162,7 @@ Unless you pass `--no-my-arg`, which will set the value to `False`.
 python main.py --no-my-arg
 ```
 
-## List handling
+### List handling
 
 To pass as list, just a repeat the argument
 
@@ -159,7 +171,20 @@ python main.py --my-list value1 --my-list value2
 >>> {"my_list": ["value1", "value2"]}
 ```
 
-## Development
+
+### Loading config from file
+
+You can as well load config from a json file using the `@` in front of a value. Pydantic config will naivly load the config file and pass it as a python dict to pydantic to be validated. 
+
+**Command line argument will have precedence over config file**
+
+example:
+
+```bash
+python main.py --train @train_config.json 
+```
+
+# Development
 
 This project use [uv](https://github.com/astral-sh/uv) to manage python.
 
