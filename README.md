@@ -184,6 +184,14 @@ example:
 python main.py --train @train_config.json 
 ```
 
+You can as well load yaml file by using the `.yaml` or `.yml` extension
+
+```bash
+python main.py --train @train_config.yaml 
+```
+
+**Note:pydantic_config will look at the file extension to determine the file type.**
+
 # Development
 
 This project use [uv](https://github.com/astral-sh/uv) to manage python.
