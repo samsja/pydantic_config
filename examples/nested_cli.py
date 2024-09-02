@@ -1,5 +1,6 @@
 from pathlib import Path
-from pydantic_config import parse_argv, BaseConfig, validate_call
+from pydantic_config import parse_argv, BaseConfig
+from pydantic import validate_call
 
 
 class TrainingConfig(BaseConfig):
