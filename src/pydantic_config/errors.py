@@ -67,3 +67,9 @@ class CliError(PydanticConfigError):
 
 
 class MergedConflictError(PydanticConfigError): ...
+
+
+class InvalidConfigFileError(PydanticConfigError):
+    def __init__(self, original_error: Exception):
+        super().__init__()
+        self.original_error = original_error
