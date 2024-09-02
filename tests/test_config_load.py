@@ -19,6 +19,11 @@ def tmp_yaml_file(tmp_path):
     return os.path.join(tmp_path, "dummy_config.yaml")
 
 
+@pytest.fixture()
+def tmp_toml_file(tmp_path):
+    return os.path.join(tmp_path, "dummy_config.toml")
+
+
 def test_config_file(tmp_file):
     config_dot_json = """
     {
@@ -118,4 +123,14 @@ def test_yaml_config_file(tmp_yaml_file):
     string_to_file(tmp_yaml_file, config_dot_yaml)
 
     argv = ["--hey", f"@{tmp_yaml_file}", "--hello", "world"]
+    assert parse_args(argv) == {"hey": {"foo": "bar"}, "hello": "world"}
+
+
+def test_toml_config_file(tmp_toml_file):
+    config_dot_toml = """
+    foo = "bar"
+    """
+    string_to_file(tmp_toml_file, config_dot_toml)
+
+    argv = ["--hey", f"@{tmp_toml_file}", "--hello", "world"]
     assert parse_args(argv) == {"hey": {"foo": "bar"}, "hello": "world"}

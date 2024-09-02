@@ -184,7 +184,7 @@ example:
 python main.py --train @train_config.json 
 ```
 
-You can as well load yaml file by using the `.yaml` or `.yml` extension
+You can as well load yaml file by using the `.yaml` or `.yml` extension or toml file by using the `.toml` extension
 
 ```bash
 python main.py --train @train_config.yaml 
