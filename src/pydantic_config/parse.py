@@ -1,5 +1,6 @@
 from __future__ import annotations
 import copy
+import json
 from typing import TypeAlias
 import sys
 from pydantic_config.errors import CliError
@@ -21,6 +22,9 @@ class Value:
 
 
 NestedArgs: TypeAlias = dict[str, "NestedArgs"]  # dict[str, "NestedArgs" | Value]
+
+
+CONFIG_FILE_SIGN = "@"
 
 
 def parse_nested_args(arg_name: str, value: RawValue) -> NestedArgs:
@@ -61,9 +65,29 @@ def unwrap_value(args: NestedArgs) -> NestedArgs:
     for key, value in args.items():
         if isinstance(value, Value):
             args[key] = value.value
-        else:
+        elif isinstance(value, dict):
             unwrap_value(value)
+        else:
+            raise ValueError(f"Invalid value type {type(value)}")
     return args
+
+
+def load_config_file(path: str, priority: int) -> NestedArgs:
+    """
+    Load a config file and return a nested dictionary.
+    """
+    with open(path, "r") as f:
+        loaded_json = json.load(f)
+
+    def wrap_value(nested_dict):
+        if isinstance(nested_dict, dict):
+            for key, value in nested_dict.items():
+                nested_dict[key] = wrap_value(value)
+            return nested_dict
+        else:
+            return Value(nested_dict, priority)
+
+    return wrap_value(loaded_json)
 
 
 def parse_args(args: list[str]) -> NestedArgs:
@@ -121,7 +145,11 @@ def parse_args(args: list[str]) -> NestedArgs:
                 value = not (arg_name.startswith("--no-"))
 
             arg_name = normalize_arg_name(arg_name)
-            value = Value(value, priority=1)  # command line argument are priority over config file
+            if isinstance(value, str) and value.startswith(CONFIG_FILE_SIGN):
+                value = load_config_file(value.removeprefix(CONFIG_FILE_SIGN), priority=0)
+            else:
+                value = Value(value, priority=1)  # command line are priority over config file
+
             parsed_arg = parse_nested_args(arg_name, value)
 
             def merge_dict(name, left, right):
