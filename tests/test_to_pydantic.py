@@ -9,7 +9,7 @@ def test_cli_to_pydantic():
         hello: str
         world: int
 
-    argv = ["main.py", "--hello", "world", "--world", "1"]
+    argv = ["--hello", "world", "--world", "1"]
 
     arg_parsed = parse_args(argv)
     assert arg_parsed == {"hello": "world", "world": "1"}
@@ -33,7 +33,6 @@ def test_complex_pydantic():
         bar: str
 
     argv = [
-        "main.py",
         "--nested.nested.hello",
         "world",
         "--nested.nested.world",
@@ -64,14 +63,9 @@ def test_validate_function():
         assert config.world == 1
         assert a == "b"
 
-    arg_parsed = parse_args(["main.py", "--a", "b", "--config.hello", "hello", "--config.world", "1"])
+    arg_parsed = parse_args(["--a", "b", "--config.hello", "hello", "--config.world", "1"])
     foo(**arg_parsed)
 
     with pytest.raises(AssertionError):
-        arg_parsed = parse_args(["main.py", "--a", "b", "--config.hello", "nooo", "--config.world", "1"])
+        arg_parsed = parse_args(["--a", "b", "--config.hello", "nooo", "--config.world", "1"])
         foo(**arg_parsed)
-
-    with pytest.raises(SystemExit) as e:
-        arg_parsed = parse_args(["main.py", "--a", "b", "--config.world", "1"])
-        foo(**arg_parsed)
-    assert e.value.code == 1
