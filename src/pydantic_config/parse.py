@@ -138,6 +138,8 @@ def parse_args(args: list[str]) -> NestedArgs:
                             if isinstance(new_arg.value, bool):
                                 if new_arg.priority > arg.priority:
                                     left[name] = new_arg
+                                elif new_arg.priority < arg.priority:
+                                    ...
                                 else:
                                     raise CliError(args_original, [i], f"Conflicting boolean flag for {name}", [])
                         if isinstance(new_arg.value, str):
