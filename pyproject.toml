@@ -1,6 +1,6 @@
 [project]
 name = "pydantic-config"
-version = "0.1.0"
+version = "0.2.0"
 description = "cli and config for ml using pydantic"
 authors = [
     { name = "Sami Jaghouar", email = "sami.jaghouar@gmail.com" }
