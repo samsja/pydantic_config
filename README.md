@@ -15,7 +15,8 @@ pip install git+https://github.com/samsja/pydantic_config
 This is the code to define the cli (in a file name `simple_cli.py`)
 
 ```python
-from pydantic_config import validate_call, parse_argv
+from pydantic_config import parse_argv
+from pydantic import validate_call
 
 @validate_call
 def main(hello: str, foo: int):
@@ -43,12 +44,6 @@ For instance if you passed a wrong parameters:
 python examples/simple_cli.py --hello world --foo --fooo
 ```
 
-Pydantic config will complain:
-```bash
-╭─ 1 errors ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ --fooo is not a valid cli argument                                                                                            │
-╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-```
 
 ## Nested Config 
 
@@ -61,11 +56,8 @@ Allowing to represent the config as a nested model is the most natural way to re
 
 ```python
 from pathlib import Path
-from pydantic_config import parse_argv, BaseConfig, validate_call
-
-
-from pathlib import Path
-from pydantic_config import parse_argv, BaseConfig, validate_call
+from pydantic_config import parse_argv, BaseConfig
+from pydantic import validate_call
 
 
 class TrainingConfig(BaseConfig):

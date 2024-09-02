@@ -1,4 +1,5 @@
-from pydantic_config import validate_call, parse_argv
+from pydantic_config import parse_argv
+from pydantic import validate_call
 
 
 @validate_call
