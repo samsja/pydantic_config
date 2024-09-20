@@ -214,16 +214,9 @@ def parse_args(args: list[str]) -> NestedArgs:
                     if isinstance(arg, Value):
                         if not isinstance(new_arg, Value):
                             raise CliError(args_original, [i], f"Conflicting value for {name}", [])
-                        if isinstance(arg.value, bool):
-                            if isinstance(new_arg.value, bool):
-                                if new_arg.priority > arg.priority:
-                                    left[name] = new_arg
-                                elif new_arg.priority < arg.priority:
-                                    ...
-                                else:
-                                    raise CliError(args_original, [i], f"Conflicting boolean flag for {name}", [])
-                        if isinstance(new_arg.value, str):
-                            if not isinstance(arg.value, str):
+
+                        if not isinstance(new_arg.value, dict):
+                            if isinstance(arg.value, dict):
                                 raise CliError(args_original, [i], f"Conflicting value for {name}", [])
                             if new_arg.priority > arg.priority:
                                 left[name] = new_arg
@@ -231,13 +224,12 @@ def parse_args(args: list[str]) -> NestedArgs:
                                 ...
                             else:
                                 # if we get mutiple non bool arg we put them into a list
-                                if isinstance(arg.value, str):
+                                if isinstance(arg.value, bool) or isinstance(new_arg.value, bool):
+                                    raise CliError(args_original, [i], f"Conflicting boolean flag for {name}", [])
+                                else:
                                     arg.value = [arg.value]
 
                                 arg.value.append(new_arg.value)
-                        else:
-                            if isinstance(new_arg.value, bool):
-                                raise CliError(args_original, [i], f"Conflicting boolean flag for {name}", [])
 
                     elif isinstance(arg, dict):
                         if not isinstance(new_arg, dict):
