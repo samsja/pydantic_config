@@ -137,12 +137,30 @@ def parse_args(args: list[str]) -> NestedArgs:
     while i < len(args):
         potential_arg_name = args[i]
 
-        if not potential_arg_name.startswith("--"):
+        if i == 0 and args[i].startswith(CONFIG_FILE_SIGN):
+            ## if we start with a config value we don't need a key name
+            ## example python train.py @llama_7b.json
+            config_name = args[i].removeprefix(CONFIG_FILE_SIGN)
+            try:
+                value = load_config_file(config_name, priority=0)
+            except InvalidConfigFileError as e:
+                raise CliError(
+                    args_original,
+                    [0],
+                    f"Invalid config file [bold]{config_name}[/bold]. Original error: {e.original_error}",
+                    [],
+                )
+
+            merged_args.update(value)
+            i += 1
+
+        if not potential_arg_name.startswith("--") and not potential_arg_name.startswith(CONFIG_FILE_SIGN):
             ## arg_name should start with "--" Example "--hello a"
             error_msg = "the first argument should start with '--'"
             suggestion_args[i] = "--" + potential_arg_name
             raise CliError(args_original, [i], error_msg, suggestion_args)
-        else:
+
+        if not potential_arg_name.startswith(CONFIG_FILE_SIGN):
             # once we have the arg name we look for the arg value
             arg_name = potential_arg_name
 

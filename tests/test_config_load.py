@@ -36,6 +36,30 @@ def test_config_file(tmp_file):
     assert parse_args(argv) == {"hey": {"foo": "bar"}, "hello": "world"}
 
 
+def test_config_file_root_level(tmp_file):
+    config_dot_json = """
+    {
+        "foo": "bar"
+    }
+    """
+    string_to_file(tmp_file, config_dot_json)
+
+    argv = [f"@{tmp_file}"]
+    assert parse_args(argv) == {"foo": "bar"}
+
+
+def test_config_file_root_level_override(tmp_file):
+    config_dot_json = """
+    {
+        "foo": "bar"
+    }
+    """
+    string_to_file(tmp_file, config_dot_json)
+
+    argv = [f"@{tmp_file}", "--foo", "world", "--hey", "oh"]
+    assert parse_args(argv) == {"foo": "world", "hey": "oh"}
+
+
 def test_override_config_file_pre(tmp_file):
     config_dot_json = """
     {
