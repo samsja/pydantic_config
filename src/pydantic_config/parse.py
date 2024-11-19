@@ -170,11 +170,19 @@ def parse_args(args: list[str]) -> NestedArgs:
                 increment = 1
             else:
                 arg_value = args[i + 1]
+                need_to_load_config_file = False
 
                 if arg_value.startswith("--"):
                     ## Example "--hello --foo a". Hello is a bool here
                     value = None
                     increment = 1  # we want to analyse --foo next
+                # elif arg_value == CONFIG_FILE_SIGN: # example " --hello @ config.json --foo"
+                #     if i == len(args) - 1:
+                #         raise CliError(args_original, [i], "Cannot end with @", [])
+                #     else:
+                #         value = args[i + 2]
+                #         increment = 3 # we want to analyse --foo next
+                #         need_to_load_config_file = True
                 else:
                     ## example "--hello a --foo b"
                     value = arg_value
@@ -191,8 +199,12 @@ def parse_args(args: list[str]) -> NestedArgs:
 
             arg_name = normalize_arg_name(arg_name)
             if isinstance(value, str) and value.startswith(CONFIG_FILE_SIGN):
+                value = value.removeprefix(CONFIG_FILE_SIGN)
+                need_to_load_config_file = True
+
+            if need_to_load_config_file:
                 try:
-                    value = load_config_file(value.removeprefix(CONFIG_FILE_SIGN), priority=0)
+                    value = load_config_file(value, priority=0)
                 except InvalidConfigFileError as e:
                     raise CliError(
                         args_original,
