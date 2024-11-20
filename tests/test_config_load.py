@@ -169,3 +169,26 @@ def test_config_file_root_level_override_toml(tmp_toml_file):
 
     argv = [f"@{tmp_toml_file}", "--yo.foo", "100", "--hey", "oh"]
     assert parse_args(argv) == {"yo": {"foo": "100"}, "hey": "oh"}
+
+
+def test_white_space_config_file(tmp_file):
+    config_dot_json = """
+    {
+        "foo": "bar"
+    }
+    """
+    string_to_file(tmp_file, config_dot_json)
+
+    argv = ["--hey", "@", f"{tmp_file}", "--hello", "world"]
+    assert parse_args(argv) == {"hey": {"foo": "bar"}, "hello": "world"}
+
+
+def test_config_file_root_level_override_toml_white_space(tmp_toml_file):
+    config_dot_toml = """
+    [yo]
+    foo = 10
+    """
+    string_to_file(tmp_toml_file, config_dot_toml)
+
+    argv = ["@", f"{tmp_toml_file}", "--yo.foo", "100", "--hey", "oh"]
+    assert parse_args(argv) == {"yo": {"foo": "100"}, "hey": "oh"}
