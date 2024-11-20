@@ -140,7 +140,13 @@ def parse_args(args: list[str]) -> NestedArgs:
         if i == 0 and args[i].startswith(CONFIG_FILE_SIGN):
             ## if we start with a config value we don't need a key name
             ## example python train.py @llama_7b.json
-            config_name = args[i].removeprefix(CONFIG_FILE_SIGN)
+
+            if args[i] == "@":
+                config_name = args[i + 1]
+                i += 2
+            else:
+                config_name = args[i].removeprefix(CONFIG_FILE_SIGN)
+                i += 1
             try:
                 value = load_config_file(config_name, priority=0)
             except InvalidConfigFileError as e:
@@ -152,7 +158,6 @@ def parse_args(args: list[str]) -> NestedArgs:
                 )
 
             merged_args.update(value)
-            i += 1
 
         if not potential_arg_name.startswith("--") and not potential_arg_name.startswith(CONFIG_FILE_SIGN):
             ## arg_name should start with "--" Example "--hello a"
@@ -176,13 +181,13 @@ def parse_args(args: list[str]) -> NestedArgs:
                     ## Example "--hello --foo a". Hello is a bool here
                     value = None
                     increment = 1  # we want to analyse --foo next
-                # elif arg_value == CONFIG_FILE_SIGN: # example " --hello @ config.json --foo"
-                #     if i == len(args) - 1:
-                #         raise CliError(args_original, [i], "Cannot end with @", [])
-                #     else:
-                #         value = args[i + 2]
-                #         increment = 3 # we want to analyse --foo next
-                #         need_to_load_config_file = True
+                elif arg_value == CONFIG_FILE_SIGN:  # example " --hello @ config.json --foo"
+                    if i == len(args) - 1:
+                        raise CliError(args_original, [i], "Cannot end with @", [])
+                    else:
+                        value = args[i + 2]
+                        increment = 3  # we want to analyse --foo next
+                        need_to_load_config_file = True
                 else:
                     ## example "--hello a --foo b"
                     value = arg_value
