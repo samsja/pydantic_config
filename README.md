@@ -181,14 +181,17 @@ You can as well load config from a json file using the `@` in front of a value. 
 example:
 
 ```bash
-python main.py --train @train_config.json 
-```
+python main.py --train @ train_config.json 
+``` 
+
 
 You can as well load yaml file by using the `.yaml` or `.yml` extension or toml file by using the `.toml` extension
 
 ```bash
-python main.py --train @train_config.yaml 
+python main.py --train @ train_config.yaml 
 ```
+
+both `@config.toml` and `@ config.toml` are valid and load the same way.
 
 **Note:pydantic_config will look at the file extension to determine the file type.**
 
