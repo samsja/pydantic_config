@@ -168,6 +168,7 @@ def parse_args(args: list[str]) -> NestedArgs:
         if not potential_arg_name.startswith(CONFIG_FILE_SIGN):
             # once we have the arg name we look for the arg value
             arg_name = potential_arg_name
+            need_to_load_config_file = False
 
             # if we are at the end of the list, we assume the last value is a boolean
             if i == len(args) - 1:
@@ -175,7 +176,6 @@ def parse_args(args: list[str]) -> NestedArgs:
                 increment = 1
             else:
                 arg_value = args[i + 1]
-                need_to_load_config_file = False
 
                 if arg_value.startswith("--"):
                     ## Example "--hello --foo a". Hello is a bool here
