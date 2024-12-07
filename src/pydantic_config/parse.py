@@ -171,8 +171,26 @@ def parse_args(args: list[str]) -> NestedArgs:
             need_to_load_config_file = False
 
             # if we are at the end of the list, we assume the last value is a boolean
-            if i == len(args) - 1:
+            if "=" in potential_arg_name:
+                splits = potential_arg_name.split("=")
+                if len(splits) != 2:
+                    raise CliError(
+                        args_original, [i], "Invalid argument format. Expected --arg=value, found two or mote =", []
+                    )
+                arg_name = splits[0]
+                value = splits[1]
+                increment = 1
+            elif i == len(args) - 1:
                 value = None
+                increment = 1
+            elif "=" in potential_arg_name:
+                splits = potential_arg_name.split("=")
+                if len(splits) != 2:
+                    raise CliError(
+                        args_original, [i], "Invalid argument format. Expected --arg=value, found two or mote =", []
+                    )
+                arg_name = splits[0]
+                value = splits[1]
                 increment = 1
             else:
                 arg_value = args[i + 1]

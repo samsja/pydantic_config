@@ -123,8 +123,10 @@ Honorable mention to the tool that I used in the past:
 Pydantic config accept argument with two leading minus `-`.
 
 ```bash
-python main.py --arg value --arg2 value2
+python main.py --arg value --arg2 value2 --arg3=value3
 ```
+
+You can pass both using white space or using the `=` syntax.
 
 ### Python varaible,  `-` and `_`
 

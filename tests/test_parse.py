@@ -85,3 +85,13 @@ def test_correct_arg_passed():
 def test_python_underscor_replace():
     argv = ["--hello-world", "hye", "--foo_bar", "bar"]
     assert parse_args(argv) == {"hello_world": "hye", "foo_bar": "bar"}
+
+
+def test_use_equal():
+    argv = ["--hello-world=hye", "--foo_bar=bar"]
+    assert parse_args(argv) == {"hello_world": "hye", "foo_bar": "bar"}
+
+
+def test_use_equal_nested():
+    argv = ["--hello-world.a=hye", "--foo_bar=bar", "--hey", "go"]
+    assert parse_args(argv) == {"hello_world": {"a": "hye"}, "foo_bar": "bar", "hey": "go"}
