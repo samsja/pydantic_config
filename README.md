@@ -215,7 +215,7 @@ update your env with the right dev env
 
 ```bash
 uv venv
-uv sync
+uv sync --extra all
 ```
 
 Run test with 
