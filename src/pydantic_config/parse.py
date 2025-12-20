@@ -262,9 +262,9 @@ def parse_args(args: list[str]) -> NestedArgs:
                                 if isinstance(arg.value, bool) or isinstance(new_arg.value, bool):
                                     raise CliError(args_original, [i], f"Conflicting boolean flag for {name}", [])
                                 else:
-                                    arg.value = [arg.value]
-
-                                arg.value.append(new_arg.value)
+                                    if not isinstance(arg.value, list):
+                                        arg.value = [arg.value]
+                                    arg.value.append(new_arg.value)
 
                     elif isinstance(arg, dict):
                         if not isinstance(new_arg, dict):
