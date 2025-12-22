@@ -43,8 +43,16 @@ def test_bool_conflict():
 
 
 def test_list():
-    argv = ["--hello", "world", "--foo", "bar", "--hello", "universe"]
-    assert parse_args(argv) == {"hello": ["world", "universe"], "foo": "bar"}
+    argv = [
+        "--hello", "world",
+        "--foo", "bar",
+        "--hello", "universe",
+        "--hello", "galaxy",
+    ]
+    assert parse_args(argv) == {
+        "hello": ["world", "universe", "galaxy"],
+        "foo": "bar",
+    }
 
 
 ## nested
