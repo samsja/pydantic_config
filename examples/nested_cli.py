@@ -1,30 +1,34 @@
 from pathlib import Path
-from pydantic_config import parse_argv, BaseConfig
-from pydantic import validate_call
+from pydantic_config import cli, BaseConfig
 
 
 class TrainingConfig(BaseConfig):
     lr: float = 3e-4
-    batch_size: int
+    batch_size: int = 32
 
 
 class DataConfig(BaseConfig):
-    path: Path
+    path: Path = Path("./data")
+
+
+class Config(BaseConfig):
+    train: TrainingConfig = TrainingConfig()
+    data: DataConfig = DataConfig()
 
 
 def prepare_data(conf: DataConfig):
-    print(conf)
+    print(f"Data config: {conf}")
 
 
 def train_model(conf: TrainingConfig):
-    print(conf)
+    print(f"Training config: {conf}")
 
 
-@validate_call
-def main(train: TrainingConfig, data: DataConfig):
-    prepare_data(data)
-    train_model(train)
+def main(config: Config):
+    prepare_data(config.data)
+    train_model(config.train)
 
 
 if __name__ == "__main__":
-    main(**parse_argv())
+    config = cli(Config)
+    main(config)
