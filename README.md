@@ -176,6 +176,21 @@ python train.py --model @model.toml  # also works without space
 
 Supported formats: `.toml`, `.yaml`, `.yml`, `.json`
 
+## Examples
+
+Run the examples from the repo:
+
+```bash
+# Simple CLI
+python examples/simple_cli.py --hello world --foo 42
+
+# Nested config with TOML file
+python examples/nested_cli.py --train @ examples/train_config.toml --data.path /tmp/data
+
+# Override values from config file
+python examples/nested_cli.py --train @ examples/train_config.toml --train.lr 0.001
+```
+
 ## Development
 
 This project uses [uv](https://github.com/astral-sh/uv):
