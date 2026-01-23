@@ -14,6 +14,7 @@ class DataConfig(BaseConfig):
 class Config(BaseConfig):
     train: TrainingConfig = TrainingConfig()
     data: DataConfig = DataConfig()
+    hello: int
 
 
 def prepare_data(conf: DataConfig):

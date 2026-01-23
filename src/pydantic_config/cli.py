@@ -32,7 +32,7 @@ from typing import TypeVar, overload
 
 import tyro
 from pydantic import BaseModel, ConfigDict
-from tyro._fmtlib import box, rows, text
+from tyro._fmtlib import box, cols, hr, rows, text
 
 T = TypeVar("T")
 
@@ -54,15 +54,73 @@ class ConfigFileError(Exception):
         self.message = message
 
 
+def _format_validation_error(message: str) -> list:
+    """Parse and format a pydantic validation error message into styled elements."""
+    content = []
+    lines = message.split("\n")
+
+    # Check if this is a pydantic validation error
+    if "validation error" in lines[0]:
+        # First line: "X validation error(s) for ModelName"
+        content.append(text["bright_red"](lines[0]))
+
+        i = 1
+        while i < len(lines):
+            line = lines[i]
+            # Field name lines (not indented)
+            if line and not line.startswith(" "):
+                content.append(
+                    cols(
+                        ("", 2),
+                        text["bold"](line),
+                    )
+                )
+            # Error description lines (indented with 2 spaces)
+            elif line.startswith("  "):
+                content.append(
+                    cols(
+                        ("", 4),
+                        text["dim"](line.strip()),
+                    )
+                )
+            i += 1
+    else:
+        # Not a validation error, just display as-is
+        content.append(text(message))
+
+    return content
+
+
 def _print_config_error_and_exit(error: ConfigFileError) -> None:
     """Print a config file error in tyro-style box format and exit."""
     width = min(80, max(40, shutil.get_terminal_size().columns))
+
+    # Check if this is a validation error with pydantic details
+    message = error.message
+    content = []
+
+    if "Failed to validate config" in message:
+        # Extract the source info and the actual error
+        parts = message.split(": ", 1)
+        if len(parts) == 2:
+            source_info = parts[0]  # "Failed to validate config from 'merged config'"
+            pydantic_error = parts[1]
+
+            content.append(text(source_info + ":"))
+            content.append(hr["red"]())
+            content.extend(_format_validation_error(pydantic_error))
+        else:
+            content.append(text(message))
+    else:
+        content.append(text(message))
+
     error_box = box["red"](
         text["red", "bold"]("Config file error"),
-        rows(text(error.message)),
+        rows(*content),
     )
-    print(error_box.render(width)[0], file=sys.stderr)
-    for line in error_box.render(width)[1:]:
+
+    rendered = error_box.render(width)
+    for line in rendered:
         print(line, file=sys.stderr)
     sys.exit(1)
 
