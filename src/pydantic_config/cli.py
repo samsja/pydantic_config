@@ -188,14 +188,18 @@ def _nest_config(key_path: str, config: dict) -> dict:
     return result
 
 
-def _build_default_from_config(cls: type[T], config: dict) -> T | None:
-    """Build a default instance from config dict for tyro."""
+def _build_default_from_config(cls: type[T], config: dict, config_path: str | None = None) -> T | None:
+    """Build a default instance from config dict for tyro.
+    
+    Raises ConfigFileError if the config cannot be validated against the model.
+    """
     if not config:
         return None
     try:
         return _dict_to_instance(cls, config)
-    except (TypeError, ValueError):
-        return None
+    except Exception as e:
+        source = f" from '{config_path}'" if config_path else ""
+        raise ConfigFileError(f"Failed to validate config{source}: {e}") from e
 
 
 @overload
@@ -271,7 +275,7 @@ def cli(
     # Build default from merged config
     config_default = None
     if merged_config:
-        config_default = _build_default_from_config(cls, merged_config)
+        config_default = _build_default_from_config(cls, merged_config, config_path="merged config")
 
     # Merge with provided default
     final_default = default

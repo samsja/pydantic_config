@@ -354,6 +354,53 @@ def test_cli_missing_file_after_at():
         cli(SimpleConfig, args=["@"])
 
 
+def test_cli_discriminated_union_missing_type(tmp_toml_file):
+    """Test that missing discriminator field raises an error instead of being silently ignored."""
+    from typing import Annotated, Literal
+    from pydantic import Field
+
+    class DataConfigA(BaseConfig):
+        type: Literal["a"] = "a"
+        value: int = 1
+
+    class DataConfigB(BaseConfig):
+        type: Literal["b"] = "b"
+        value: int = 2
+
+    class ConfigWithUnion(BaseConfig):
+        data: Annotated[DataConfigA | DataConfigB, Field(discriminator="type")] = DataConfigA()
+
+    # Config file missing the required 'type' discriminator
+    write_file(tmp_toml_file, "[data]\nvalue = 100")
+
+    with pytest.raises(ConfigFileError, match="Failed to validate config"):
+        cli(ConfigWithUnion, args=["@", tmp_toml_file])
+
+
+def test_cli_discriminated_union_with_type(tmp_toml_file):
+    """Test that discriminated union works when type field is provided."""
+    from typing import Annotated, Literal
+    from pydantic import Field
+
+    class DataConfigA(BaseConfig):
+        type: Literal["a"] = "a"
+        value: int = 1
+
+    class DataConfigB(BaseConfig):
+        type: Literal["b"] = "b"
+        value: int = 2
+
+    class ConfigWithUnion(BaseConfig):
+        data: Annotated[DataConfigA | DataConfigB, Field(discriminator="type")] = DataConfigA()
+
+    # Config file with the required 'type' discriminator
+    write_file(tmp_toml_file, '[data]\ntype = "b"\nvalue = 100')
+
+    config = cli(ConfigWithUnion, args=["@", tmp_toml_file])
+    assert config.data.type == "b"
+    assert config.data.value == 100
+
+
 # Tests: real-world scenarios
 
 
