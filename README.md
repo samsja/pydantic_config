@@ -47,26 +47,42 @@ if __name__ == "__main__":
 
 ### Help output
 
+```bash
+python train.py --help
+```
+
 <p align="center">
-  <img src="assets/help.svg" alt="Help output">
+  <img src="assets/help.svg" alt="Help output" width="700">
 </p>
 
 ### Missing required argument
 
+```bash
+python train.py
+```
+
 <p align="center">
-  <img src="assets/required_error.svg" alt="Missing required argument">
+  <img src="assets/required_error.svg" alt="Missing required argument" width="500">
 </p>
 
 ### Config file validation error
 
+```bash
+python train.py --train @ train_config.toml
+```
+
 <p align="center">
-  <img src="assets/config_error.svg" alt="Config validation error">
+  <img src="assets/config_error.svg" alt="Config validation error" width="700">
 </p>
 
 ### Config file not found
 
+```bash
+python train.py @ nonexistent.toml
+```
+
 <p align="center">
-  <img src="assets/file_not_found.svg" alt="Config file not found">
+  <img src="assets/file_not_found.svg" alt="Config file not found" width="700">
 </p>
 
 ## Config Files

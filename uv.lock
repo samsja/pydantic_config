@@ -188,7 +188,7 @@ requires-dist = [
     { name = "pyyaml", marker = "extra == 'yaml'" },
     { name = "tomli", marker = "extra == 'all'" },
     { name = "tomli", marker = "extra == 'toml'" },
-    { name = "tyro", specifier = ">=0.8.0" },
+    { name = "tyro", specifier = ">=1.0.0" },
 ]
 provides-extras = ["yaml", "toml", "all"]
 

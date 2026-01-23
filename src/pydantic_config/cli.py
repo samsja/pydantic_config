@@ -26,13 +26,13 @@ from __future__ import annotations
 import copy
 import importlib.util
 import json
+import os
 import shutil
 import sys
 from typing import TypeVar, overload
 
 import tyro
 from pydantic import BaseModel, ConfigDict
-from tyro._fmtlib import box, cols, hr, rows, text
 
 T = TypeVar("T")
 
@@ -46,6 +46,36 @@ class BaseConfig(BaseModel):
 CONFIG_FILE_SIGN = "@"
 
 
+# ANSI color codes
+_RESET = "\033[0m"
+_RED = "\033[31m"
+_BOLD = "\033[1m"
+_DIM = "\033[2m"
+_BRIGHT_RED = "\033[91m"
+
+
+def _supports_color() -> bool:
+    """Check if the terminal supports ANSI colors."""
+    if os.environ.get("NO_COLOR"):
+        return False
+    if os.environ.get("FORCE_COLOR"):
+        return True
+    if not hasattr(sys.stderr, "isatty"):
+        return False
+    if not sys.stderr.isatty():
+        return False
+    if os.environ.get("TERM") == "dumb":
+        return False
+    return True
+
+
+def _colorize(text: str, *codes: str) -> str:
+    """Apply ANSI color codes to text if colors are supported."""
+    if not _supports_color():
+        return text
+    return "".join(codes) + text + _RESET
+
+
 class ConfigFileError(Exception):
     """Error loading or parsing a config file."""
 
@@ -54,74 +84,93 @@ class ConfigFileError(Exception):
         self.message = message
 
 
-def _format_validation_error(message: str) -> list:
-    """Parse and format a pydantic validation error message into styled elements."""
-    content = []
-    lines = message.split("\n")
-
-    # Check if this is a pydantic validation error
-    if "validation error" in lines[0]:
-        # First line: "X validation error(s) for ModelName"
-        content.append(text["bright_red"](lines[0]))
-
-        i = 1
-        while i < len(lines):
-            line = lines[i]
-            # Field name lines (not indented)
-            if line and not line.startswith(" "):
-                content.append(
-                    cols(
-                        ("", 2),
-                        text["bold"](line),
-                    )
-                )
-            # Error description lines (indented with 2 spaces)
-            elif line.startswith("  "):
-                content.append(
-                    cols(
-                        ("", 4),
-                        text["dim"](line.strip()),
-                    )
-                )
-            i += 1
-    else:
-        # Not a validation error, just display as-is
-        content.append(text(message))
-
-    return content
-
-
 def _print_config_error_and_exit(error: ConfigFileError) -> None:
-    """Print a config file error in tyro-style box format and exit."""
+    """Print a config file error in a nice box format and exit."""
     width = min(80, max(40, shutil.get_terminal_size().columns))
+    inner_width = width - 4  # Account for "│ " and " │"
 
-    # Check if this is a validation error with pydantic details
-    message = error.message
-    content = []
+    # Box drawing characters
+    top_left, top_right = "╭", "╮"
+    bot_left, bot_right = "╰", "╯"
+    horiz, vert = "─", "│"
 
-    if "Failed to validate config" in message:
-        # Extract the source info and the actual error
-        parts = message.split(": ", 1)
-        if len(parts) == 2:
-            source_info = parts[0]  # "Failed to validate config from 'merged config'"
-            pydantic_error = parts[1]
+    def wrap_text(text: str, max_width: int) -> list[str]:
+        """Wrap text to fit within max_width."""
+        words = text.split()
+        lines = []
+        current_line = ""
+        for word in words:
+            if not current_line:
+                current_line = word
+            elif len(current_line) + 1 + len(word) <= max_width:
+                current_line += " " + word
+            else:
+                lines.append(current_line)
+                current_line = word
+        if current_line:
+            lines.append(current_line)
+        return lines or [""]
 
-            content.append(text(source_info + ":"))
-            content.append(hr["red"]())
-            content.extend(_format_validation_error(pydantic_error))
-        else:
-            content.append(text(message))
-    else:
-        content.append(text(message))
+    def box_line(content: str) -> str:
+        """Create a line inside the box with proper padding."""
+        padding = inner_width - len(content)
+        return f"{_colorize(vert, _RED)} {content}{' ' * padding} {_colorize(vert, _RED)}"
 
-    error_box = box["red"](
-        text["red", "bold"]("Config file error"),
-        rows(*content),
+    # Build the error message content
+    lines = []
+
+    # Title line
+    title = "Config file error"
+    title_plain_len = 2 + len(title) + 1
+    lines.append(
+        _colorize(top_left, _RED)
+        + f"{horiz} {_colorize(title, _RED, _BOLD)} "
+        + _colorize(horiz * (width - title_plain_len - 2) + top_right, _RED)
     )
 
-    rendered = error_box.render(width)
-    for line in rendered:
+    # Content
+    message = error.message
+    if "Failed to validate config" in message:
+        parts = message.split(": ", 1)
+        if len(parts) == 2:
+            # Source info line
+            for line in wrap_text(parts[0] + ":", inner_width):
+                lines.append(box_line(line))
+
+            # Horizontal rule
+            lines.append(box_line(_colorize(horiz * inner_width, _RED)))
+
+            # Pydantic error details
+            pydantic_lines = parts[1].split("\n")
+            for pydantic_line in pydantic_lines:
+                if not pydantic_line:
+                    continue
+                # First line (validation error count)
+                if "validation error" in pydantic_line:
+                    for wrapped in wrap_text(pydantic_line, inner_width):
+                        lines.append(box_line(_colorize(wrapped, _BRIGHT_RED)))
+                # Field name (not indented)
+                elif pydantic_line and not pydantic_line.startswith(" "):
+                    for wrapped in wrap_text(f"  {pydantic_line}", inner_width):
+                        lines.append(box_line(_colorize(wrapped, _BOLD)))
+                # Error details (indented)
+                elif pydantic_line.startswith("  "):
+                    for wrapped in wrap_text(f"    {pydantic_line.strip()}", inner_width):
+                        lines.append(box_line(_colorize(wrapped, _DIM)))
+        else:
+            for line in wrap_text(message, inner_width):
+                lines.append(box_line(line))
+    else:
+        for line in wrap_text(message, inner_width):
+            lines.append(box_line(line))
+
+    # Bottom border
+    lines.append(_colorize(f"{bot_left}{horiz * (width - 2)}{bot_right}", _RED))
+
+    # Print to stderr
+    for line in lines:
         print(line, file=sys.stderr)
+
     sys.exit(1)
 
 
