@@ -26,11 +26,13 @@ from __future__ import annotations
 import copy
 import importlib.util
 import json
+import shutil
 import sys
 from typing import TypeVar, overload
 
 import tyro
 from pydantic import BaseModel, ConfigDict
+from tyro._fmtlib import box, rows, text
 
 T = TypeVar("T")
 
@@ -52,6 +54,19 @@ class ConfigFileError(Exception):
         self.message = message
 
 
+def _print_config_error_and_exit(error: ConfigFileError) -> None:
+    """Print a config file error in tyro-style box format and exit."""
+    width = min(80, max(40, shutil.get_terminal_size().columns))
+    error_box = box["red"](
+        text["red", "bold"]("Config file error"),
+        rows(text(error.message)),
+    )
+    print(error_box.render(width)[0], file=sys.stderr)
+    for line in error_box.render(width)[1:]:
+        print(line, file=sys.stderr)
+    sys.exit(1)
+
+
 def _load_config_file(path: str) -> dict:
     """Load a config file (JSON, YAML, or TOML) and return its contents as a dict."""
     try:
@@ -64,9 +79,7 @@ def _load_config_file(path: str) -> dict:
 
             elif path.endswith(".yaml") or path.endswith(".yml"):
                 if importlib.util.find_spec("yaml") is None:
-                    raise ConfigFileError(
-                        f"Cannot load {path}: pyyaml not installed. Install with: pip install pyyaml"
-                    )
+                    raise ConfigFileError(f"Cannot load {path}: pyyaml not installed. Install with: pip install pyyaml")
                 import yaml
 
                 try:
@@ -76,9 +89,7 @@ def _load_config_file(path: str) -> dict:
 
             elif path.endswith(".toml"):
                 if importlib.util.find_spec("tomli") is None:
-                    raise ConfigFileError(
-                        f"Cannot load {path}: tomli not installed. Install with: pip install tomli"
-                    )
+                    raise ConfigFileError(f"Cannot load {path}: tomli not installed. Install with: pip install tomli")
                 import tomli
 
                 try:
@@ -87,9 +98,7 @@ def _load_config_file(path: str) -> dict:
                     raise ConfigFileError(f"Invalid TOML in {path}: {e}")
 
             else:
-                raise ConfigFileError(
-                    f"Unsupported file type: {path}. Supported: .json, .yaml, .yml, .toml"
-                )
+                raise ConfigFileError(f"Unsupported file type: {path}. Supported: .json, .yaml, .yml, .toml")
     except FileNotFoundError:
         raise ConfigFileError(f"Config file not found: {path}")
 
@@ -190,7 +199,7 @@ def _nest_config(key_path: str, config: dict) -> dict:
 
 def _build_default_from_config(cls: type[T], config: dict, config_path: str | None = None) -> T | None:
     """Build a default instance from config dict for tyro.
-    
+
     Raises ConfigFileError if the config cannot be validated against the model.
     """
     if not config:
@@ -260,33 +269,41 @@ def cli(
 
         config = cli(Config)
     """
+    use_sys_argv = args is None
     if args is None:
         args = sys.argv[1:]
 
-    # Process args to extract config files
-    remaining_args, root_config, nested_configs = _process_args(args)
+    try:
+        # Process args to extract config files
+        remaining_args, root_config, nested_configs = _process_args(args)
 
-    # Merge all configs: root first, then nested configs
-    merged_config = root_config
-    for key_path, config in nested_configs.items():
-        nested = _nest_config(key_path, config)
-        merged_config = _deep_merge(merged_config, nested)
+        # Merge all configs: root first, then nested configs
+        merged_config = root_config
+        for key_path, config in nested_configs.items():
+            nested = _nest_config(key_path, config)
+            merged_config = _deep_merge(merged_config, nested)
 
-    # Build default from merged config
-    config_default = None
-    if merged_config:
-        config_default = _build_default_from_config(cls, merged_config, config_path="merged config")
+        # Build default from merged config
+        config_default = None
+        if merged_config:
+            config_default = _build_default_from_config(cls, merged_config, config_path="merged config")
 
-    # Merge with provided default
-    final_default = default
-    if config_default is not None:
-        final_default = config_default
+        # Merge with provided default
+        final_default = default
+        if config_default is not None:
+            final_default = config_default
 
-    # Call tyro with processed args
-    return tyro.cli(
-        cls,
-        args=remaining_args,
-        default=final_default,
-        prog=prog,
-        description=description,
-    )
+        # Call tyro with processed args
+        return tyro.cli(
+            cls,
+            args=remaining_args,
+            default=final_default,
+            prog=prog,
+            description=description,
+        )
+    except ConfigFileError as e:
+        # Only print formatted error when running from CLI (sys.argv)
+        # When args are explicitly passed, re-raise for programmatic handling
+        if use_sys_argv:
+            _print_config_error_and_exit(e)
+        raise
