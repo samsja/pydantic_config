@@ -95,26 +95,32 @@ def _print_config_error_and_exit(error: ConfigFileError) -> None:
     horiz, vert = "─", "│"
 
     def wrap_text(text: str, max_width: int) -> list[str]:
-        """Wrap text to fit within max_width."""
-        words = text.split()
+        """Wrap text to fit within max_width, preserving leading indentation."""
+        # Preserve leading whitespace
+        stripped = text.lstrip()
+        indent = text[: len(text) - len(stripped)]
+
+        words = stripped.split()
         lines = []
-        current_line = ""
+        current_line = indent
         for word in words:
-            if not current_line:
-                current_line = word
+            if current_line == indent:
+                current_line = indent + word
             elif len(current_line) + 1 + len(word) <= max_width:
                 current_line += " " + word
             else:
                 lines.append(current_line)
-                current_line = word
+                current_line = indent + word
         if current_line:
             lines.append(current_line)
-        return lines or [""]
+        return lines or [indent]
 
-    def box_line(content: str) -> str:
+    def box_line(content: str, visible_len: int | None = None) -> str:
         """Create a line inside the box with proper padding."""
-        padding = inner_width - len(content)
-        return f"{_colorize(vert, _RED)} {content}{' ' * padding} {_colorize(vert, _RED)}"
+        if visible_len is None:
+            visible_len = len(content)
+        padding = inner_width - visible_len
+        return f"{_colorize(vert, _RED)} {content}{' ' * max(0, padding)} {_colorize(vert, _RED)}"
 
     # Build the error message content
     lines = []
@@ -138,7 +144,7 @@ def _print_config_error_and_exit(error: ConfigFileError) -> None:
                 lines.append(box_line(line))
 
             # Horizontal rule
-            lines.append(box_line(_colorize(horiz * inner_width, _RED)))
+            lines.append(box_line(_colorize(horiz * inner_width, _RED), inner_width))
 
             # Pydantic error details
             pydantic_lines = parts[1].split("\n")
@@ -148,15 +154,17 @@ def _print_config_error_and_exit(error: ConfigFileError) -> None:
                 # First line (validation error count)
                 if "validation error" in pydantic_line:
                     for wrapped in wrap_text(pydantic_line, inner_width):
-                        lines.append(box_line(_colorize(wrapped, _BRIGHT_RED)))
+                        lines.append(box_line(_colorize(wrapped, _BRIGHT_RED), len(wrapped)))
                 # Field name (not indented)
                 elif pydantic_line and not pydantic_line.startswith(" "):
-                    for wrapped in wrap_text(f"  {pydantic_line}", inner_width):
-                        lines.append(box_line(_colorize(wrapped, _BOLD)))
+                    text = f"  {pydantic_line}"
+                    for wrapped in wrap_text(text, inner_width):
+                        lines.append(box_line(_colorize(wrapped, _BOLD), len(wrapped)))
                 # Error details (indented)
                 elif pydantic_line.startswith("  "):
-                    for wrapped in wrap_text(f"    {pydantic_line.strip()}", inner_width):
-                        lines.append(box_line(_colorize(wrapped, _DIM)))
+                    text = f"    {pydantic_line.strip()}"
+                    for wrapped in wrap_text(text, inner_width):
+                        lines.append(box_line(_colorize(wrapped, _DIM), len(wrapped)))
         else:
             for line in wrap_text(message, inner_width):
                 lines.append(box_line(line))
