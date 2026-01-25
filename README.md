@@ -1,8 +1,16 @@
-# Pydantic config
+# Pydantic Config
 
-Pydantic is a dead simple config manager that built on top of pydantic.
+A drop-in replacement for `tyro.cli` with TOML/YAML/JSON config file support.
 
-It can parse some configuration either from cli or from a yaml/json/toml file and validate it against a pydantic model.
+```python
+# Instead of:
+from tyro import cli
+
+# Use:
+from pydantic_config import cli
+```
+
+Built on top of [tyro](https://brentyi.github.io/tyro/) for type-safe CLI parsing and [Pydantic](https://docs.pydantic.dev/) for validation.
 
 ## Install
 
@@ -10,239 +18,103 @@ It can parse some configuration either from cli or from a yaml/json/toml file an
 pip install git+https://github.com/samsja/pydantic_config
 ```
 
-## Example
+For TOML support (recommended):
+```bash
+pip install "pydantic_config[toml] @ git+https://github.com/samsja/pydantic_config"
+```
 
-This is the code to define the cli (in a file name `simple_cli.py`)
+## Quick Start
 
 ```python
-from pydantic_config import parse_argv
-from pydantic import validate_call
+from pydantic_config import cli, BaseConfig
 
-@validate_call
-def main(hello: str, foo: int):
-    print(f"hello: {hello}, foo: {foo}")
+class TrainConfig(BaseConfig):
+    lr: float = 1e-4
+    batch_size: int = 32
 
+class ModelConfig(BaseConfig):
+    hidden_size: int = 256
+    num_layers: int = 4
 
-if __name__ == "__main__":
-    main(**parse_argv())
-```
-
-you can call it like this
-
-```bash
-
-python simple_cli.py  --hello world --foo bar
->>> 'hello': 'world', 'foo': 1
-```
-
-Under the hood, the cli argument are converted to a (nested) dictionary and passed to the function. Pydantic is used to validate
-the argument, eventually coercing the type if needed.
-
-
-
-## Nested Config 
-
-Pydantic Config allow to represent nested config using pydantic [BaseModel](https://docs.pydantic.dev/latest/api/base_model/).
-
-The vision is that most ml code is a suite of nested funciton call, training loop calling model init, calling sub module init etcc.
-
-Allowing to represent the config as a nested model is the most natural way to represent ML code (IMO). It allows as well to locally define argument, tested them independently from other but still having a global config that can be validate ahead of time, allowing to fail early if necessary. 
-
-
-```python
-from pathlib import Path
-from pydantic_config import parse_argv, BaseConfig
-from pydantic import validate_call
-
-
-class TrainingConfig(BaseConfig):
-    lr: float = 3e-4
-    batch_size: int
-
-
-class DataConfig(BaseConfig):
-    path: Path
-
-def prepare_data(conf: DataConfig):
-    print(conf)
-
-def train_model(conf: TrainingConfig):
-    print(conf)
-
-@validate_call
-def main(train: TrainingConfig, data: DataConfig):
-    prepare_data(data)
-    train_model(train)
+class Config(BaseConfig):
+    train: TrainConfig = TrainConfig()
+    model: ModelConfig = ModelConfig()
+    hello: int
 
 if __name__ == "__main__":
-    main(**parse_argv())
-
+    config = cli(Config)
 ```
 
-You can use it like this
+### Help output
 
 ```bash
-python examples/nested_cli.py --train.batch_size 32 --data.path ~/datasets
-
->>> path=PosixPath('/home/sami/datasets')
->>> lr=0.0003 batch_size=32
+python train.py --help
 ```
 
-You can as well load config from a json file:
+<p align="center">
+  <img src="assets/help.svg" alt="Help output" width="700">
+</p>
+
+### Missing required argument
 
 ```bash
-python examples/nested_cli.py --train @examples/train_config.json  --data.path ~/datasets
-
->>> path=PosixPath('/home/sami/datasets')
->>> lr=0.0003 batch_size=32
+python train.py
 ```
 
-## Yet another cli parser / config manager in python ?
+<p align="center">
+  <img src="assets/required_error.svg" alt="Missing required argument" width="500">
+</p>
 
-Yes sorry, but this one will stay as simple as possible. Arg to dict to pydantic. 
-
-###  Why ?
-
-Because I have been tired of the different cli tool and config manager in the python ecosystem. I want to let [Pydantic](https://docs.pydantic.dev/latest/) handle all of the validation and coercion logic (because it is doing it great), I just need a simple tool that can
-generate a dict from the cli arguments and/or a json file and pass it pydantic.
-
-Pydantic_config is what most of the cli/config tool would have been if pydantic would have been released earlier.
-
-Honorable mention to the tool that I used in the past:
-
-* [Typer](https://typer.tiangolo.com/)
-* [cyclopts](https://github.com/BrianPugh/cyclopts)
-* [click](https://click.palletsprojects.com/en/8.0.x/cli/)
-* [fire](https://github.com/google/python-fire)
-* [jsonargparse](https://github.com/omni-us/jsonargparse)
-
-
-
-## CLI syntax
-
-Pydantic config accept argument with two leading minus `-`.
+### Config file validation error
 
 ```bash
-python main.py --arg value --arg2 value2 --arg3=value3
+python train.py --train @ train_config.toml
 ```
 
-You can pass both using white space or using the `=` syntax.
+<p align="center">
+  <img src="assets/config_error.svg" alt="Config validation error" width="700">
+</p>
 
-### Python varaible,  `-` and `_`
-
-Any other `-` will be converted to an underscoed `_`. As in python variable name use underscode but cli args are usaully using
-minus as seperator.
-
-This two are therefore equivalent
-```bash
-python main.py --my-arg value
-python main.py --my_arg value
-```
-
-### Nested argument
-
-Pydantic config support nested argument using the `.` delimiter
+### Config file not found
 
 ```bash
-python main.py --hello.foo bar --xyz value
-python main.py --hello.foo.a abc --hello.foo.b bar
+python train.py @ nonexistent.toml
 ```
 
-this hierarchy will be translated into nested python dictionaries
+<p align="center">
+  <img src="assets/file_not_found.svg" alt="Config file not found" width="700">
+</p>
 
-### Boolean handling
+## Config Files
 
-If you pass an argument without a value, pydantic_config will assume it is a boolean and set the value to `True`.
+Load config from TOML/YAML/JSON files using the `@` syntax:
 
 ```bash
-python main.py --my-arg
+# Load config file
+python train.py @ config.toml
+
+# Override values from CLI
+python train.py @ config.toml --train.lr 0.001
+
+# Load nested configs from separate files
+python train.py --model @ model.toml --train @ train.toml
 ```
 
-Unless you pass `--no-my-arg`, which will set the value to `False`.
+Example `config.toml`:
+```toml
+[train]
+lr = 0.0003
+batch_size = 64
+
+[model]
+hidden_size = 512
+```
+
+CLI arguments always override config file values.
+
+## Development
 
 ```bash
-python main.py --no-my-arg
-```
-
-### List handling
-
-To pass as list, just a repeat the argument
-
-```bash
-python main.py --my-list value1 --my-list value2
->>> {"my_list": ["value1", "value2"]}
-```
-
-
-### Loading config from file
-
-You can as well load config from a json file using the `@` in front of a value. Pydantic config will naivly load the config file and pass it as a python dict to pydantic to be validated. 
-
-**Command line argument will have precedence over config file**
-
-example:
-
-```bash
-python main.py --train @ train_config.json 
-``` 
-
-
-You can as well load yaml file by using the `.yaml` or `.yml` extension or toml file by using the `.toml` extension
-
-```bash
-python main.py --train @ train_config.yaml 
-```
-
-both `@config.toml` and `@ config.toml` are valid and load the same way.
-
-**Note:pydantic_config will look at the file extension to determine the file type.**
-
-If you want to use `toml` or `yaml` file you need to install using 
-```
-pip install .[toml]
-```
-or 
-
-```
-pip install .[yaml]
-```
-
-# Development
-
-This project use [uv](https://github.com/astral-sh/uv) to manage python.
-
-update your env with the right dev env
-
-```bash
-uv venv
 uv sync --extra all
+uv run pytest
 ```
-
-Run test with 
-
-```bash
-uv run pytest -vv
-```
-
-to work on error messaging do:
-
-``bash
-uv run python tests/ui_testing.py --foo bar
-```
-
-You can see all the error message by doing
-
-```bash
-./tests/saw_error_message.sh
-```
-
-
-
-## todo list
-
-- [ ] rename since pydantic_config is already used on pypi
-- [x] add decorator to wrap function
-- [x] add rich for ui
-- [x] add no prefix to negate boolean
-- [x] nice error message
-
