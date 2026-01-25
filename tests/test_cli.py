@@ -436,10 +436,16 @@ def test_ml_training_config(tmp_path):
     config = cli(
         TrainConfig,
         args=[
-            "--model", "@", model_file,
-            "--optimizer", "@", optim_file,
-            "--data.batch-size", "64",
-            "--max-epochs", "50",
+            "--model",
+            "@",
+            model_file,
+            "--optimizer",
+            "@",
+            optim_file,
+            "--data.batch-size",
+            "64",
+            "--max-epochs",
+            "50",
         ],
     )
 
@@ -472,3 +478,134 @@ def test_override_nested_in_config_file(tmp_toml_file):
     assert config.inner.a == 10
     assert config.inner.b == 200
     assert config.inner.c == 30
+
+
+# Tests: Optional nested configs (Type | None)
+
+
+class OptionalInnerConfig(BaseConfig):
+    """Inner config for optional nested config tests."""
+
+    project: str = "default-project"
+    name: str | None = None
+
+
+class ConfigWithOptionalNested(BaseConfig):
+    """Config with an optional nested config."""
+
+    lr: float = 1e-4
+    wandb: OptionalInnerConfig | None = None
+
+
+def test_optional_nested_config_none_by_default():
+    """Test that optional nested config is None when no args are passed."""
+    config = cli(ConfigWithOptionalNested, args=[])
+    assert config.lr == 1e-4
+    assert config.wandb is None
+
+
+def test_optional_nested_config_with_nested_arg():
+    """Test that passing a nested arg auto-selects the non-None variant."""
+    config = cli(ConfigWithOptionalNested, args=["--wandb.name", "my-run"])
+    assert config.lr == 1e-4
+    assert config.wandb is not None
+    assert config.wandb.name == "my-run"
+    assert config.wandb.project == "default-project"
+
+
+def test_optional_nested_config_with_multiple_nested_args():
+    """Test passing multiple nested args for optional config."""
+    config = cli(
+        ConfigWithOptionalNested,
+        args=["--wandb.name", "my-run", "--wandb.project", "custom-project"],
+    )
+    assert config.wandb is not None
+    assert config.wandb.name == "my-run"
+    assert config.wandb.project == "custom-project"
+
+
+def test_optional_nested_config_with_hyphen_arg():
+    """Test that hyphenated arg names work for optional nested configs."""
+
+    class InnerWithUnderscore(BaseConfig):
+        some_value: str = "default"
+        another_field: int = 42
+
+    class ConfigWithUnderscoreField(BaseConfig):
+        my_optional: InnerWithUnderscore | None = None
+
+    config = cli(
+        ConfigWithUnderscoreField,
+        args=["--my-optional.some-value", "custom"],
+    )
+    assert config.my_optional is not None
+    assert config.my_optional.some_value == "custom"
+    assert config.my_optional.another_field == 42
+
+
+def test_optional_nested_config_with_other_args():
+    """Test mixing optional nested config args with other args."""
+    config = cli(
+        ConfigWithOptionalNested,
+        args=["--lr", "0.001", "--wandb.name", "experiment"],
+    )
+    assert config.lr == 0.001
+    assert config.wandb is not None
+    assert config.wandb.name == "experiment"
+
+
+def test_optional_nested_config_from_config_file(tmp_toml_file):
+    """Test optional nested config loaded from config file."""
+    write_file(tmp_toml_file, '[wandb]\nname = "from-file"\nproject = "file-project"')
+    config = cli(ConfigWithOptionalNested, args=["@", tmp_toml_file])
+    assert config.wandb is not None
+    assert config.wandb.name == "from-file"
+    assert config.wandb.project == "file-project"
+
+
+def test_optional_nested_config_file_override_with_cli(tmp_toml_file):
+    """Test CLI args can override optional config loaded from file."""
+    write_file(tmp_toml_file, '[wandb]\nname = "from-file"\nproject = "file-project"')
+    config = cli(
+        ConfigWithOptionalNested,
+        args=["@", tmp_toml_file, "--wandb.name", "cli-override"],
+    )
+    assert config.wandb is not None
+    assert config.wandb.name == "cli-override"
+    assert config.wandb.project == "file-project"
+
+
+def test_multiple_optional_nested_configs():
+    """Test config with multiple optional nested fields."""
+
+    class LoggingConfig(BaseConfig):
+        level: str = "INFO"
+        file: str | None = None
+
+    class MultiOptionalConfig(BaseConfig):
+        wandb: OptionalInnerConfig | None = None
+        logging: LoggingConfig | None = None
+        seed: int = 42
+
+    # Only set wandb, logging stays None
+    config = cli(MultiOptionalConfig, args=["--wandb.name", "run1"])
+    assert config.wandb is not None
+    assert config.wandb.name == "run1"
+    assert config.logging is None
+    assert config.seed == 42
+
+    # Only set logging, wandb stays None
+    config = cli(MultiOptionalConfig, args=["--logging.level", "DEBUG"])
+    assert config.wandb is None
+    assert config.logging is not None
+    assert config.logging.level == "DEBUG"
+
+    # Set both
+    config = cli(
+        MultiOptionalConfig,
+        args=["--wandb.name", "run2", "--logging.level", "WARNING"],
+    )
+    assert config.wandb is not None
+    assert config.wandb.name == "run2"
+    assert config.logging is not None
+    assert config.logging.level == "WARNING"

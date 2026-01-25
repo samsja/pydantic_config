@@ -29,9 +29,11 @@ import json
 import os
 import shutil
 import sys
-from typing import TypeVar, overload
+import types
+from typing import TypeVar, Union, get_args, get_origin, overload
 
 import tyro
+from tyro.conf import AvoidSubcommands
 from pydantic import BaseModel, ConfigDict
 
 T = TypeVar("T")
@@ -326,6 +328,124 @@ def _build_default_from_config(cls: type[T], config: dict, config_path: str | No
         raise ConfigFileError(f"Failed to validate config{source}: {e}") from e
 
 
+def _is_optional_type(annotation: type) -> tuple[bool, type | None]:
+    """Check if a type annotation is Optional[T] (i.e., T | None or Union[T, None]).
+
+    Returns:
+        A tuple of (is_optional, inner_type) where inner_type is the non-None type
+        if it's optional, or None if not optional.
+    """
+    origin = get_origin(annotation)
+
+    # Handle Union types (typing.Union) and Python 3.10+ union syntax (types.UnionType)
+    # T | None uses types.UnionType in Python 3.10+, while Union[T, None] uses typing.Union
+    if origin is Union or origin is types.UnionType:
+        args = get_args(annotation)
+        non_none_args = [arg for arg in args if arg is not type(None)]
+        # It's Optional if there's exactly one non-None type and None is present
+        if len(non_none_args) == 1 and type(None) in args:
+            return True, non_none_args[0]
+
+    return False, None
+
+
+def _get_optional_nested_fields(cls: type) -> dict[str, type]:
+    """Get all fields that are Optional[SomeConfig] where SomeConfig is a BaseModel.
+
+    Returns:
+        A dict mapping field names to their non-None types.
+    """
+    optional_fields = {}
+
+    if not (isinstance(cls, type) and issubclass(cls, BaseModel)):
+        return optional_fields
+
+    for field_name, field_info in cls.model_fields.items():
+        annotation = field_info.annotation
+        if annotation is None:
+            continue
+
+        is_optional, inner_type = _is_optional_type(annotation)
+        if is_optional and inner_type is not None:
+            # Check if inner_type is a BaseModel (nested config)
+            if isinstance(inner_type, type) and issubclass(inner_type, BaseModel):
+                optional_fields[field_name] = inner_type
+
+    return optional_fields
+
+
+def _find_referenced_optional_fields(args: list[str], optional_fields: dict[str, type]) -> set[str]:
+    """Find which optional fields are referenced in the CLI args.
+
+    Looks for patterns like --field.subfield or --field-name.subfield (with hyphens).
+
+    Returns:
+        Set of field names that are referenced in args.
+    """
+    referenced = set()
+
+    for arg in args:
+        if not arg.startswith("--"):
+            continue
+
+        # Remove the -- prefix
+        arg_name = arg[2:]
+
+        # Check each optional field
+        for field_name in optional_fields:
+            # tyro uses hyphens in CLI args, so check both forms
+            field_with_hyphen = field_name.replace("_", "-")
+
+            # Check if arg starts with field_name. (dot-separated nested access)
+            if arg_name.startswith(f"{field_name}.") or arg_name.startswith(f"{field_with_hyphen}."):
+                referenced.add(field_name)
+                break
+
+    return referenced
+
+
+def _build_default_for_optional_fields(
+    cls: type[T],
+    referenced_fields: set[str],
+    optional_fields: dict[str, type],
+    existing_default: T | None = None,
+) -> T | None:
+    """Build a default instance with referenced optional fields populated.
+
+    Args:
+        cls: The config class
+        referenced_fields: Set of field names that need non-None defaults
+        optional_fields: Dict mapping field names to their non-None types
+        existing_default: An existing default instance to build upon
+
+    Returns:
+        A default instance with the referenced optional fields populated.
+    """
+    if not referenced_fields:
+        return existing_default
+
+    # Start from existing default or create fresh dict
+    if existing_default is not None:
+        # Convert to dict to modify
+        default_dict = existing_default.model_dump()
+    else:
+        default_dict = {}
+
+    # For each referenced optional field, create a default instance if not already set
+    for field_name in referenced_fields:
+        if field_name not in default_dict or default_dict[field_name] is None:
+            inner_type = optional_fields[field_name]
+            # Create a default instance of the inner type
+            default_dict[field_name] = inner_type()
+
+    # Build the config instance
+    try:
+        return cls.model_validate(default_dict)
+    except Exception:
+        # If validation fails, return existing default
+        return existing_default
+
+
 @overload
 def cli(cls: type[T]) -> T: ...
 
@@ -408,13 +528,25 @@ def cli(
         if config_default is not None:
             final_default = config_default
 
+        # Handle Optional[Config] fields: detect if any are referenced in args
+        # and build defaults for them so tyro doesn't require subcommand selection
+        optional_fields = _get_optional_nested_fields(cls)
+        if optional_fields:
+            referenced_fields = _find_referenced_optional_fields(remaining_args, optional_fields)
+            if referenced_fields:
+                final_default = _build_default_for_optional_fields(
+                    cls, referenced_fields, optional_fields, final_default
+                )
+
         # Call tyro with processed args
+        # Use AvoidSubcommands to prevent Optional[Config] from creating subcommands
         return tyro.cli(
             cls,
             args=remaining_args,
             default=final_default,
             prog=prog,
             description=description,
+            config=(AvoidSubcommands,),
         )
     except ConfigFileError as e:
         # Only print formatted error when running from CLI (sys.argv)
