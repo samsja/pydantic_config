@@ -32,7 +32,7 @@ import sys
 from typing import TypeVar, overload
 
 import tyro
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 T = TypeVar("T")
 
@@ -41,6 +41,31 @@ class BaseConfig(BaseModel):
     """Base configuration class with strict validation (extra fields forbidden)."""
 
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _none_str_to_none(cls, data: dict) -> dict:
+        """Convert ``"None"`` string values to ``None`` so TOML files can express null."""
+        if not isinstance(data, dict):
+            return data
+        for key, value in data.items():
+            if value == "None":
+                data[key] = None
+        return data
+
+    @model_validator(mode="before")
+    @classmethod
+    def _default_discriminator_types(cls, data: dict) -> dict:
+        """For discriminated-union fields whose default carries a ``type`` tag, inject it when missing."""
+        if not isinstance(data, dict):
+            return data
+        for field_name, field_info in cls.model_fields.items():
+            val = data.get(field_name)
+            if isinstance(val, dict) and "type" not in val:
+                default = field_info.default
+                if isinstance(default, BaseModel) and hasattr(default, "type"):
+                    val["type"] = default.type
+        return data
 
 
 CONFIG_FILE_SIGN = "@"

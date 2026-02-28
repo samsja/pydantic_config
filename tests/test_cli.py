@@ -354,9 +354,10 @@ def test_cli_missing_file_after_at():
         cli(SimpleConfig, args=["@"])
 
 
-def test_cli_discriminated_union_missing_type(tmp_toml_file):
-    """Test that missing discriminator field raises an error instead of being silently ignored."""
+def test_cli_discriminated_union_missing_type_uses_default(tmp_toml_file):
+    """Test that missing discriminator field is auto-injected from default."""
     from typing import Annotated, Literal
+
     from pydantic import Field
 
     class DataConfigA(BaseConfig):
@@ -370,11 +371,12 @@ def test_cli_discriminated_union_missing_type(tmp_toml_file):
     class ConfigWithUnion(BaseConfig):
         data: Annotated[DataConfigA | DataConfigB, Field(discriminator="type")] = DataConfigA()
 
-    # Config file missing the required 'type' discriminator
+    # Config file missing the 'type' discriminator - should use default "a"
     write_file(tmp_toml_file, "[data]\nvalue = 100")
 
-    with pytest.raises(ConfigFileError, match="Failed to validate config"):
-        cli(ConfigWithUnion, args=["@", tmp_toml_file])
+    config = cli(ConfigWithUnion, args=["@", tmp_toml_file])
+    assert config.data.type == "a"
+    assert config.data.value == 100
 
 
 def test_cli_discriminated_union_with_type(tmp_toml_file):
@@ -396,6 +398,81 @@ def test_cli_discriminated_union_with_type(tmp_toml_file):
     # Config file with the required 'type' discriminator
     write_file(tmp_toml_file, '[data]\ntype = "b"\nvalue = 100')
 
+    config = cli(ConfigWithUnion, args=["@", tmp_toml_file])
+    assert config.data.type == "b"
+    assert config.data.value == 100
+
+
+# Tests: BaseConfig validators
+
+
+def test_none_str_to_none():
+    class ConfigWithOptional(BaseConfig):
+        name: str | None = "default"
+
+    config = cli(ConfigWithOptional, args=["--name", "None"])
+    assert config.name is None
+
+
+def test_none_str_to_none_in_toml(tmp_toml_file):
+    class ConfigWithOptional(BaseConfig):
+        name: str | None = "default"
+
+    write_file(tmp_toml_file, 'name = "None"')
+    config = cli(ConfigWithOptional, args=["@", tmp_toml_file])
+    assert config.name is None
+
+
+def test_none_str_passes_regular_values():
+    class ConfigWithOptional(BaseConfig):
+        name: str | None = "default"
+
+    config = cli(ConfigWithOptional, args=["--name", "hello"])
+    assert config.name == "hello"
+
+
+def test_discriminator_type_injected_from_default(tmp_toml_file):
+    """When a TOML file overrides a discriminated union field without specifying 'type',
+    the default type tag should be injected automatically."""
+    from typing import Annotated, Literal
+
+    from pydantic import Field
+
+    class DataConfigA(BaseConfig):
+        type: Literal["a"] = "a"
+        value: int = 1
+
+    class DataConfigB(BaseConfig):
+        type: Literal["b"] = "b"
+        value: int = 2
+
+    class ConfigWithUnion(BaseConfig):
+        data: Annotated[DataConfigA | DataConfigB, Field(discriminator="type")] = DataConfigA()
+
+    write_file(tmp_toml_file, "[data]\nvalue = 100")
+    config = cli(ConfigWithUnion, args=["@", tmp_toml_file])
+    assert config.data.type == "a"
+    assert config.data.value == 100
+
+
+def test_discriminator_type_explicit_overrides_default(tmp_toml_file):
+    """When the TOML file explicitly provides a 'type', it should be used."""
+    from typing import Annotated, Literal
+
+    from pydantic import Field
+
+    class DataConfigA(BaseConfig):
+        type: Literal["a"] = "a"
+        value: int = 1
+
+    class DataConfigB(BaseConfig):
+        type: Literal["b"] = "b"
+        value: int = 2
+
+    class ConfigWithUnion(BaseConfig):
+        data: Annotated[DataConfigA | DataConfigB, Field(discriminator="type")] = DataConfigA()
+
+    write_file(tmp_toml_file, '[data]\ntype = "b"\nvalue = 100')
     config = cli(ConfigWithUnion, args=["@", tmp_toml_file])
     assert config.data.type == "b"
     assert config.data.value == 100
