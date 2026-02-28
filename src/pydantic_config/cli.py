@@ -29,7 +29,8 @@ import json
 import os
 import shutil
 import sys
-from typing import TypeVar, overload
+import types
+from typing import TypeVar, Union, get_args, get_origin, overload
 
 import tyro
 from pydantic import BaseModel, ConfigDict, model_validator
@@ -329,6 +330,70 @@ def _nest_config(key_path: str, config: dict) -> dict:
     return result
 
 
+def _is_optional_model(annotation: type) -> bool:
+    """Check if annotation is Optional[SomeBaseModel] (i.e. SomeBaseModel | None)."""
+    if hasattr(annotation, "__metadata__"):
+        annotation = get_args(annotation)[0]
+    origin = get_origin(annotation)
+    if origin is not Union and origin is not getattr(types, "UnionType", None):
+        return False
+    args = get_args(annotation)
+    non_none = [a for a in args if a is not type(None)]
+    return len(non_none) == 1 and isinstance(non_none[0], type) and issubclass(non_none[0], BaseModel)
+
+
+def _find_optional_model_paths(cls: type, prefix: str = "") -> set[str]:
+    """Recursively find all CLI arg paths (kebab-case) that map to Optional[BaseModel] fields."""
+    paths: set[str] = set()
+    if not hasattr(cls, "model_fields"):
+        return paths
+    for field_name, field_info in cls.model_fields.items():
+        field_kebab = field_name.replace("_", "-")
+        full_path = f"{prefix}.{field_kebab}" if prefix else field_kebab
+        annotation = field_info.annotation
+        if _is_optional_model(annotation):
+            paths.add(full_path)
+        inner = annotation
+        if hasattr(inner, "__metadata__"):
+            inner = get_args(inner)[0]
+        if isinstance(inner, type) and issubclass(inner, BaseModel):
+            paths.update(_find_optional_model_paths(inner, prefix=full_path))
+    return paths
+
+
+def _expand_bare_optional_flags(
+    args: list[str], optional_paths: set[str]
+) -> tuple[list[str], dict]:
+    """Detect bare flags for Optional[BaseModel] fields and convert to config overrides.
+
+    When a user writes ``--model.compile`` without a value for a field typed
+    ``CompileConfig | None``, we remove it from the CLI args and instead enable
+    it in the config dict with an empty dict (meaning: use defaults).
+
+    Returns (remaining_args, config_overrides_as_nested_dict).
+    """
+    remaining: list[str] = []
+    overrides: dict = {}
+
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg.startswith("--"):
+            path = arg[2:]
+            if path in optional_paths:
+                next_is_value = i + 1 < len(args) and not args[i + 1].startswith("-") and not args[i + 1].startswith("@")
+                if not next_is_value:
+                    snake_path = path.replace("-", "_")
+                    nested = _nest_config(snake_path, {})
+                    overrides = _deep_merge(overrides, nested)
+                    i += 1
+                    continue
+        remaining.append(args[i])
+        i += 1
+
+    return remaining, overrides
+
+
 def _build_default_from_config(cls: type[T], config: dict, config_path: str | None = None) -> T | None:
     """Build a default instance from config dict for tyro.
 
@@ -414,6 +479,13 @@ def cli(
         for key_path, config in nested_configs.items():
             nested = _nest_config(key_path, config)
             merged_config = _deep_merge(merged_config, nested)
+
+        # Expand bare flags for Optional[BaseModel] fields (e.g. --model.compile)
+        optional_paths = _find_optional_model_paths(cls)
+        if optional_paths:
+            remaining_args, bare_overrides = _expand_bare_optional_flags(remaining_args, optional_paths)
+            if bare_overrides:
+                merged_config = _deep_merge(merged_config, bare_overrides)
 
         # Build default from merged config
         config_default = None

@@ -478,6 +478,130 @@ def test_discriminator_type_explicit_overrides_default(tmp_toml_file):
     assert config.data.value == 100
 
 
+# Tests: bare flags for Optional[BaseModel] fields
+
+
+def test_bare_flag_enables_optional_config():
+    """--compile as a bare flag should enable CompileConfig with defaults."""
+
+    class CompileConfig(BaseConfig):
+        fullgraph: bool = False
+
+    class Config(BaseConfig):
+        compile: CompileConfig | None = None
+        name: str = "test"
+
+    config = cli(Config, args=["--compile", "--name", "hello"])
+    assert config.compile is not None
+    assert config.compile.fullgraph is False
+    assert config.name == "hello"
+
+
+def test_bare_flag_at_end_of_args():
+    """--compile at end of args should still work."""
+
+    class CompileConfig(BaseConfig):
+        fullgraph: bool = False
+
+    class Config(BaseConfig):
+        name: str = "test"
+        compile: CompileConfig | None = None
+
+    config = cli(Config, args=["--name", "hello", "--compile"])
+    assert config.compile is not None
+    assert config.name == "hello"
+
+
+def test_bare_flag_nested_path():
+    """--model.compile should work for nested Optional configs."""
+
+    class CompileConfig(BaseConfig):
+        fullgraph: bool = False
+
+    class ModelConfig(BaseConfig):
+        compile: CompileConfig | None = None
+        name: str = "default"
+
+    class Config(BaseConfig):
+        model: ModelConfig = ModelConfig()
+
+    config = cli(Config, args=["--model.compile", "--model.name", "mymodel"])
+    assert config.model.compile is not None
+    assert config.model.compile.fullgraph is False
+    assert config.model.name == "mymodel"
+
+
+def test_bare_flag_with_sub_field_override_via_toml(tmp_toml_file):
+    """Sub-field overrides for Optional configs are best done via TOML."""
+
+    class CompileConfig(BaseConfig):
+        fullgraph: bool = False
+
+    class ModelConfig(BaseConfig):
+        compile: CompileConfig | None = None
+
+    class Config(BaseConfig):
+        model: ModelConfig = ModelConfig()
+
+    write_file(tmp_toml_file, "[model.compile]\nfullgraph = true")
+    config = cli(Config, args=["@", tmp_toml_file])
+    assert config.model.compile is not None
+    assert config.model.compile.fullgraph is True
+
+
+def test_bare_flag_multiple_optional_configs():
+    """Multiple bare flags should all work."""
+
+    class ACConfig(BaseConfig):
+        freq: int = 1
+
+    class CompileConfig(BaseConfig):
+        fullgraph: bool = False
+
+    class ModelConfig(BaseConfig):
+        ac: ACConfig | None = None
+        compile: CompileConfig | None = None
+
+    class Config(BaseConfig):
+        model: ModelConfig = ModelConfig()
+
+    config = cli(Config, args=["--model.compile", "--model.ac"])
+    assert config.model.compile is not None
+    assert config.model.ac is not None
+    assert config.model.ac.freq == 1
+
+
+def test_bare_flag_kebab_case():
+    """--model.ac-offloading should work (kebab-case for snake_case field)."""
+
+    class OffloadConfig(BaseConfig):
+        pin_memory: bool = True
+
+    class ModelConfig(BaseConfig):
+        ac_offloading: OffloadConfig | None = None
+
+    class Config(BaseConfig):
+        model: ModelConfig = ModelConfig()
+
+    config = cli(Config, args=["--model.ac-offloading"])
+    assert config.model.ac_offloading is not None
+    assert config.model.ac_offloading.pin_memory is True
+
+
+def test_optional_config_none_by_default():
+    """Without the bare flag, Optional config should remain None."""
+
+    class CompileConfig(BaseConfig):
+        fullgraph: bool = False
+
+    class Config(BaseConfig):
+        compile: CompileConfig | None = None
+        name: str = "test"
+
+    config = cli(Config, args=["--name", "hello"])
+    assert config.compile is None
+
+
 # Tests: real-world scenarios
 
 
