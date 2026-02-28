@@ -497,9 +497,13 @@ def cli(
         if config_default is not None:
             final_default = config_default
 
-        # Call tyro with processed args
+        # Call tyro with processed args.
+        # AvoidSubcommands prevents tyro from creating subcommands for union
+        # types (e.g. discriminated unions, Optional[BaseModel]). This avoids
+        # tyro errors on dict[str, Any] fields in non-default union variants
+        # and keeps CLI usage simple — variant selection belongs in config files.
         return tyro.cli(
-            cls,
+            tyro.conf.AvoidSubcommands[cls],
             args=remaining_args,
             default=final_default,
             prog=prog,
