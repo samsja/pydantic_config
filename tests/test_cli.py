@@ -602,6 +602,77 @@ def test_optional_config_none_by_default():
     assert config.compile is None
 
 
+# Tests: dict[str, Any] fields (handled via config files, not CLI)
+
+
+def test_dict_any_field_with_default(tmp_toml_file):
+    """dict[str, Any] fields should work when a default is provided via config file."""
+    from typing import Any
+
+    class SamplingConfig(BaseConfig):
+        temperature: float = 1.0
+        extra_body: dict[str, Any] = {}
+
+    class Config(BaseConfig):
+        sampling: SamplingConfig = SamplingConfig()
+        name: str = "test"
+
+    write_file(tmp_toml_file, '[sampling]\ntemperature = 0.5')
+    config = cli(Config, args=["@", tmp_toml_file, "--name", "hello"])
+    assert config.sampling.temperature == 0.5
+    assert config.sampling.extra_body == {}
+    assert config.name == "hello"
+
+
+def test_dict_any_field_set_via_toml(tmp_toml_file):
+    """dict[str, Any] fields should be settable via config files."""
+    from typing import Any
+
+    class EnvConfig(BaseConfig):
+        id: str = "default"
+        extra_kwargs: dict[str, Any] = {}
+
+    class Config(BaseConfig):
+        env: EnvConfig = EnvConfig()
+
+    write_file(tmp_toml_file, '[env]\nid = "custom"\n\n[env.extra_kwargs]\nseq_len = 512\nverbose = true')
+    config = cli(Config, args=["@", tmp_toml_file])
+    assert config.env.id == "custom"
+    assert config.env.extra_kwargs == {"seq_len": 512, "verbose": True}
+
+
+def test_dict_any_in_discriminated_union(tmp_toml_file):
+    """dict[str, Any] in a non-default discriminated union variant should not crash."""
+    from typing import Annotated, Any, Literal, TypeAlias
+
+    from pydantic import Field
+
+    class DefaultMode(BaseConfig):
+        type: Literal["default"] = "default"
+        scale: float = 1.0
+
+    class CustomMode(BaseConfig):
+        type: Literal["custom"] = "custom"
+        import_path: str = "my_module.fn"
+        kwargs: dict[str, Any] = {}
+
+    ModeConfig: TypeAlias = Annotated[DefaultMode | CustomMode, Field(discriminator="type")]
+
+    class Config(BaseConfig):
+        mode: ModeConfig = DefaultMode()
+        name: str = "test"
+
+    # Default mode works without touching the dict field
+    config = cli(Config, args=["--name", "hello"])
+    assert config.mode.type == "default"
+
+    # Custom mode via TOML with dict kwargs
+    write_file(tmp_toml_file, '[mode]\ntype = "custom"\nimport_path = "my.fn"\n\n[mode.kwargs]\nalpha = 0.5')
+    config = cli(Config, args=["@", tmp_toml_file])
+    assert config.mode.type == "custom"
+    assert config.mode.kwargs == {"alpha": 0.5}
+
+
 # Tests: real-world scenarios
 
 
