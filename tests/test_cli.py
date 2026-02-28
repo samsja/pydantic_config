@@ -602,6 +602,61 @@ def test_optional_config_none_by_default():
     assert config.compile is None
 
 
+def test_optional_sub_field_override():
+    """--wandb.project foo should implicitly enable the optional wandb config."""
+
+    class WandbConfig(BaseConfig):
+        project: str = "default"
+        name: str = "run"
+
+    class Config(BaseConfig):
+        wandb: WandbConfig | None = None
+        seed: int = 42
+
+    config = cli(Config, args=["--wandb.project", "my-project", "--wandb.name", "my-run"])
+    assert config.wandb is not None
+    assert config.wandb.project == "my-project"
+    assert config.wandb.name == "my-run"
+
+
+def test_optional_sub_field_nested():
+    """--model.compile.fullgraph True should work for deeply nested optional configs."""
+
+    class CompileConfig(BaseConfig):
+        fullgraph: bool = False
+        dynamic: bool = True
+
+    class ModelConfig(BaseConfig):
+        compile: CompileConfig | None = None
+        name: str = "default"
+
+    class Config(BaseConfig):
+        model: ModelConfig = ModelConfig()
+
+    config = cli(Config, args=["--model.compile.fullgraph", "True"])
+    assert config.model.compile is not None
+    assert config.model.compile.fullgraph is True
+    assert config.model.compile.dynamic is True
+
+
+def test_optional_sub_field_with_bare_flag_and_regular_args():
+    """Mixing sub-field overrides with regular args should work."""
+
+    class WandbConfig(BaseConfig):
+        project: str = "default"
+
+    class Config(BaseConfig):
+        wandb: WandbConfig | None = None
+        name: str = "test"
+        seed: int = 42
+
+    config = cli(Config, args=["--name", "hello", "--wandb.project", "proj", "--seed", "123"])
+    assert config.name == "hello"
+    assert config.seed == 123
+    assert config.wandb is not None
+    assert config.wandb.project == "proj"
+
+
 # Tests: dict[str, Any] fields (handled via config files, not CLI)
 
 

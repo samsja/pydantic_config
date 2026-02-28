@@ -361,14 +361,25 @@ def _find_optional_model_paths(cls: type, prefix: str = "") -> set[str]:
     return paths
 
 
+def _match_optional_prefix(path: str, optional_paths: set[str]) -> str | None:
+    """If ``path`` starts with an optional model path followed by '.', return it."""
+    for opt_path in optional_paths:
+        if path.startswith(opt_path + "."):
+            return opt_path
+    return None
+
+
 def _expand_bare_optional_flags(
     args: list[str], optional_paths: set[str]
 ) -> tuple[list[str], dict]:
-    """Detect bare flags for Optional[BaseModel] fields and convert to config overrides.
+    """Handle CLI args for Optional[BaseModel] fields that tyro cannot parse.
 
-    When a user writes ``--model.compile`` without a value for a field typed
-    ``CompileConfig | None``, we remove it from the CLI args and instead enable
-    it in the config dict with an empty dict (meaning: use defaults).
+    Handles two patterns:
+    1. Bare flags: ``--compile`` enables CompileConfig with defaults.
+    2. Sub-field overrides: ``--wandb.project foo`` sets a sub-field on an
+       Optional model that defaults to None.  The arg and value are removed
+       from the CLI args and injected into the config dict so pydantic
+       handles type coercion.
 
     Returns (remaining_args, config_overrides_as_nested_dict).
     """
@@ -380,6 +391,8 @@ def _expand_bare_optional_flags(
         arg = args[i]
         if arg.startswith("--"):
             path = arg[2:]
+
+            # Pattern 1: bare flag (e.g. --compile)
             if path in optional_paths:
                 next_is_value = i + 1 < len(args) and not args[i + 1].startswith("-") and not args[i + 1].startswith("@")
                 if not next_is_value:
@@ -388,6 +401,24 @@ def _expand_bare_optional_flags(
                     overrides = _deep_merge(overrides, nested)
                     i += 1
                     continue
+
+            # Pattern 2: sub-field override (e.g. --wandb.project foo)
+            matched = _match_optional_prefix(path, optional_paths)
+            if matched is not None:
+                snake_path = path.replace("-", "_")
+                if i + 1 < len(args) and not args[i + 1].startswith("--") and not args[i + 1].startswith("@"):
+                    value = args[i + 1]
+                    nested = _nest_config(snake_path, value)
+                    overrides = _deep_merge(overrides, nested)
+                    i += 2
+                    continue
+                else:
+                    # Bare sub-flag (e.g. --wandb.enabled with no value → True)
+                    nested = _nest_config(snake_path, True)
+                    overrides = _deep_merge(overrides, nested)
+                    i += 1
+                    continue
+
         remaining.append(args[i])
         i += 1
 
