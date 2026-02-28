@@ -1,13 +1,13 @@
 [project]
 name = "pydantic_config"
-version = "0.2.0"
-description = "cli and config for ml using pydantic"
+version = "0.3.0"
+description = "tyro-based CLI with TOML/YAML config file support for ML"
 authors = [
     { name = "Sami Jaghouar", email = "sami.jaghouar@gmail.com" }
 ]
 dependencies = [
     "pydantic>=2.0.0",
-    "rich",
+    "tyro>=1.0.0",
 ]
 readme = "README.md"
 requires-python = ">= 3.10"
@@ -26,6 +26,6 @@ all = ["pyyaml", "tomli"]
 [tool.ruff]
 line-length = 120 
 
-[tool.uv]
-dev-dependencies = ["ruff==0.5.0", "pre-commit>=3.0.0","pytest>=7.0.0"]
+[dependency-groups]
+dev = ["ruff==0.5.0", "pre-commit>=3.0.0", "pytest>=7.0.0"]
 

@@ -1,12 +1,5 @@
-__version__ = "0.0.1"
+__version__ = "0.3.0"
 
-from pydantic_config.parse import parse_argv
-from pydantic import BaseModel as PydanticBaseModel
-from pydantic import ConfigDict
+from pydantic_config.cli import cli, BaseConfig, ConfigFileError
 
-
-class BaseConfig(PydanticBaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-
-__all__ = ["parse_argv", "BaseConfig"]
+__all__ = ["cli", "BaseConfig", "ConfigFileError"]
