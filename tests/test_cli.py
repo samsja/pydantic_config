@@ -403,6 +403,31 @@ def test_cli_discriminated_union_with_type(tmp_toml_file):
     assert config.data.value == 100
 
 
+def test_cli_discriminated_union_switch_variant_via_cli():
+    """Test that discriminated union variant can be switched via CLI args (no config file)."""
+    from typing import Annotated, Literal
+
+    from pydantic import Field
+
+    class DataConfigA(BaseConfig):
+        type: Literal["a"] = "a"
+        value: int = 1
+
+    class DataConfigB(BaseConfig):
+        type: Literal["b"] = "b"
+        value: int = 2
+        extra: int = 99
+
+    class ConfigWithUnion(BaseConfig):
+        data: Annotated[DataConfigA | DataConfigB, Field(discriminator="type")] = DataConfigA()
+        name: str = "hello"
+
+    config = cli(ConfigWithUnion, args=["--data.type", "b", "--data.extra", "42", "--name", "world"])
+    assert config.data.type == "b"
+    assert config.data.extra == 42
+    assert config.name == "world"
+
+
 # Tests: BaseConfig validators
 
 

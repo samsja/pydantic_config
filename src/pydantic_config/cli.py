@@ -342,8 +342,20 @@ def _is_optional_model(annotation: type) -> bool:
     return len(non_none) == 1 and isinstance(non_none[0], type) and issubclass(non_none[0], BaseModel)
 
 
+def _is_multi_model_union(annotation: type) -> bool:
+    """Check if annotation is a discriminated union of multiple BaseModel subclasses."""
+    if hasattr(annotation, "__metadata__"):
+        annotation = get_args(annotation)[0]
+    origin = get_origin(annotation)
+    if origin is not Union and origin is not getattr(types, "UnionType", None):
+        return False
+    args = get_args(annotation)
+    non_none = [a for a in args if a is not type(None)]
+    return len(non_none) > 1 and all(isinstance(a, type) and issubclass(a, BaseModel) for a in non_none)
+
+
 def _find_optional_model_paths(cls: type, prefix: str = "") -> set[str]:
-    """Recursively find all CLI arg paths (kebab-case) that map to Optional[BaseModel] fields."""
+    """Recursively find all CLI arg paths (kebab-case) that map to Optional[BaseModel] or discriminated union fields."""
     paths: set[str] = set()
     if not hasattr(cls, "model_fields"):
         return paths
@@ -351,7 +363,7 @@ def _find_optional_model_paths(cls: type, prefix: str = "") -> set[str]:
         field_kebab = field_name.replace("_", "-")
         full_path = f"{prefix}.{field_kebab}" if prefix else field_kebab
         annotation = field_info.annotation
-        if _is_optional_model(annotation):
+        if _is_optional_model(annotation) or _is_multi_model_union(annotation):
             paths.add(full_path)
         inner = annotation
         if hasattr(inner, "__metadata__"):
