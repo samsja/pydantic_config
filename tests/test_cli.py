@@ -798,6 +798,22 @@ def test_dict_field_via_json_cli_with_toml(tmp_toml_file):
     assert config.name == "from-toml"
 
 
+def test_dict_field_via_json_inside_optional_model():
+    """JSON dict on a field inside an Optional[BaseModel] should be parsed correctly."""
+    from typing import Any
+
+    class InferenceConfig(BaseConfig):
+        vllm_extra: dict[str, Any] = {}
+        name: str = "default"
+
+    class Config(BaseConfig):
+        inference: InferenceConfig | None = None
+
+    config = cli(Config, args=["--inference.vllm-extra", '{"custom_arg": "value"}'])
+    assert config.inference is not None
+    assert config.inference.vllm_extra == {"custom_arg": "value"}
+
+
 # Tests: real-world scenarios
 
 

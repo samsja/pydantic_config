@@ -475,7 +475,9 @@ def _expand_bare_optional_flags(
             if matched is not None:
                 snake_path = path.replace("-", "_")
                 if i + 1 < len(args) and not args[i + 1].startswith("--") and not args[i + 1].startswith("@"):
-                    value = args[i + 1]
+                    value: str | dict | list = args[i + 1]
+                    if isinstance(value, str) and value.startswith(("{", "[")):
+                        value = json.loads(value)
                     nested = _nest_config(snake_path, value)
                     overrides = _deep_merge(overrides, nested)
                     i += 2
