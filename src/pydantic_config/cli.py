@@ -373,6 +373,62 @@ def _find_optional_model_paths(cls: type, prefix: str = "") -> set[str]:
     return paths
 
 
+def _is_dict_field(annotation: type) -> bool:
+    """Check if annotation is a dict type (e.g. dict[str, Any])."""
+    if hasattr(annotation, "__metadata__"):
+        annotation = get_args(annotation)[0]
+    return get_origin(annotation) is dict
+
+
+def _find_dict_field_paths(cls: type, prefix: str = "") -> set[str]:
+    """Recursively find all CLI arg paths (kebab-case) that map to dict fields."""
+    paths: set[str] = set()
+    if not hasattr(cls, "model_fields"):
+        return paths
+    for field_name, field_info in cls.model_fields.items():
+        field_kebab = field_name.replace("_", "-")
+        full_path = f"{prefix}.{field_kebab}" if prefix else field_kebab
+        annotation = field_info.annotation
+        if _is_dict_field(annotation):
+            paths.add(full_path)
+        inner = annotation
+        if hasattr(inner, "__metadata__"):
+            inner = get_args(inner)[0]
+        if isinstance(inner, type) and issubclass(inner, BaseModel):
+            paths.update(_find_dict_field_paths(inner, prefix=full_path))
+    return paths
+
+
+def _extract_json_dict_args(args: list[str], dict_paths: set[str]) -> tuple[list[str], dict]:
+    """Intercept CLI args for dict fields and parse their JSON values.
+
+    When a CLI arg like ``--extra-kwargs '{"key": 123}'`` matches a known
+    dict field path, parse the JSON and inject it into the config dict.
+
+    Returns (remaining_args, config_overrides_as_nested_dict).
+    """
+    remaining: list[str] = []
+    overrides: dict = {}
+
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg.startswith("--"):
+            path = arg[2:]
+            if path in dict_paths and i + 1 < len(args):
+                value_str = args[i + 1]
+                parsed = json.loads(value_str)
+                snake_path = path.replace("-", "_")
+                nested = _nest_config(snake_path, parsed)
+                overrides = _deep_merge(overrides, nested)
+                i += 2
+                continue
+        remaining.append(args[i])
+        i += 1
+
+    return remaining, overrides
+
+
 def _match_optional_prefix(path: str, optional_paths: set[str]) -> str | None:
     """If ``path`` starts with an optional model path followed by '.', return it."""
     for opt_path in optional_paths:
@@ -529,6 +585,13 @@ def cli(
             remaining_args, bare_overrides = _expand_bare_optional_flags(remaining_args, optional_paths)
             if bare_overrides:
                 merged_config = _deep_merge(merged_config, bare_overrides)
+
+        # Extract JSON dict args (e.g. --extra-kwargs '{"key": 123}')
+        dict_paths = _find_dict_field_paths(cls)
+        if dict_paths:
+            remaining_args, dict_overrides = _extract_json_dict_args(remaining_args, dict_paths)
+            if dict_overrides:
+                merged_config = _deep_merge(merged_config, dict_overrides)
 
         # Build default from merged config
         config_default = None

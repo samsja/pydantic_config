@@ -753,6 +753,51 @@ def test_dict_any_in_discriminated_union(tmp_toml_file):
     assert config.mode.kwargs == {"alpha": 0.5}
 
 
+# Tests: dict[str, Any] fields via JSON CLI args
+
+
+def test_dict_field_via_json_cli():
+    """--extra-kwargs '{"key": 123}' should parse JSON and set the dict field."""
+    from typing import Any
+
+    class Config(BaseConfig):
+        extra_kwargs: dict[str, Any] = {}
+        name: str = "test"
+
+    config = cli(Config, args=["--extra-kwargs", '{"sandbox_client_max_workers": 128}', "--name", "hello"])
+    assert config.extra_kwargs == {"sandbox_client_max_workers": 128}
+    assert config.name == "hello"
+
+
+def test_dict_field_via_json_cli_nested():
+    """JSON dict args should work for nested config fields."""
+    from typing import Any
+
+    class EnvConfig(BaseConfig):
+        id: str = "default"
+        extra_env_kwargs: dict[str, Any] = {}
+
+    class Config(BaseConfig):
+        env: EnvConfig = EnvConfig()
+
+    config = cli(Config, args=["--env.extra-env-kwargs", '{"timeout": 60, "verbose": true}'])
+    assert config.env.extra_env_kwargs == {"timeout": 60, "verbose": True}
+
+
+def test_dict_field_via_json_cli_with_toml(tmp_toml_file):
+    """JSON dict CLI args should merge with TOML dict values."""
+    from typing import Any
+
+    class Config(BaseConfig):
+        extra: dict[str, Any] = {}
+        name: str = "test"
+
+    write_file(tmp_toml_file, 'name = "from-toml"\n\n[extra]\nold_key = "old_value"')
+    config = cli(Config, args=["@", tmp_toml_file, "--extra", '{"new_key": "new_value"}'])
+    assert config.extra == {"old_key": "old_value", "new_key": "new_value"}
+    assert config.name == "from-toml"
+
+
 # Tests: real-world scenarios
 
 
