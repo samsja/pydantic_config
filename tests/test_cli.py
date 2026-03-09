@@ -885,3 +885,210 @@ def test_override_nested_in_config_file(tmp_toml_file):
     assert config.inner.a == 10
     assert config.inner.b == 200
     assert config.inner.c == 30
+
+
+# Tests: dict string value coercion (tyro parses untyped dict values as strings)
+
+
+def test_dict_coercion_int_values():
+    """Dict values that look like ints should be coerced from CLI strings."""
+    from typing import Any
+
+    class Config(BaseConfig):
+        args: dict[str, Any] = {}
+
+    config = Config.model_validate({"args": {"viewport_width": "800", "height": "600"}})
+    assert config.args == {"viewport_width": 800, "height": 600}
+    assert isinstance(config.args["viewport_width"], int)
+
+
+def test_dict_coercion_float_values():
+    """Dict values that look like floats should be coerced."""
+    from typing import Any
+
+    class Config(BaseConfig):
+        args: dict[str, Any] = {}
+
+    config = Config.model_validate({"args": {"lr": "0.001", "weight_decay": "0.01"}})
+    assert config.args == {"lr": 0.001, "weight_decay": 0.01}
+    assert isinstance(config.args["lr"], float)
+
+
+def test_dict_coercion_bool_values():
+    """Dict values 'true'/'false' should be coerced to bool."""
+    from typing import Any
+
+    class Config(BaseConfig):
+        args: dict[str, Any] = {}
+
+    config = Config.model_validate({"args": {"verbose": "true", "debug": "false"}})
+    assert config.args == {"verbose": True, "debug": False}
+    assert isinstance(config.args["verbose"], bool)
+
+
+def test_dict_coercion_mixed_types():
+    """Dict with int, float, bool, and string values all coerced correctly."""
+    from typing import Any
+
+    class Config(BaseConfig):
+        args: dict[str, Any] = {}
+
+    config = Config.model_validate({
+        "args": {"port": "8080", "rate": "0.5", "enabled": "true", "name": "hello"}
+    })
+    assert config.args["port"] == 8080
+    assert isinstance(config.args["port"], int)
+    assert config.args["rate"] == 0.5
+    assert isinstance(config.args["rate"], float)
+    assert config.args["enabled"] is True
+    assert config.args["name"] == "hello"
+    assert isinstance(config.args["name"], str)
+
+
+def test_dict_coercion_skipped_when_already_typed():
+    """Dict with non-string values should not be coerced (e.g. from TOML)."""
+    from typing import Any
+
+    class Config(BaseConfig):
+        args: dict[str, Any] = {}
+
+    config = Config.model_validate({"args": {"port": 8080, "name": "hello"}})
+    assert config.args == {"port": 8080, "name": "hello"}
+    assert isinstance(config.args["port"], int)
+
+
+def test_dict_coercion_empty_dict():
+    """Empty dict should pass through unchanged."""
+    from typing import Any
+
+    class Config(BaseConfig):
+        args: dict[str, Any] = {}
+
+    config = Config.model_validate({"args": {}})
+    assert config.args == {}
+
+
+def test_dict_coercion_pure_string_values():
+    """Dict with values that are genuinely strings should stay as strings."""
+    from typing import Any
+
+    class Config(BaseConfig):
+        args: dict[str, Any] = {}
+
+    config = Config.model_validate({"args": {"name": "alice", "label": "test-run"}})
+    assert config.args == {"name": "alice", "label": "test-run"}
+    assert isinstance(config.args["name"], str)
+
+
+def test_dict_coercion_bare_dict_annotation():
+    """Bare ``dict`` (without type params) should also get coercion."""
+    class Config(BaseConfig):
+        args: dict = {}
+
+    config = Config.model_validate({"args": {"count": "42", "flag": "true"}})
+    assert config.args["count"] == 42
+    assert isinstance(config.args["count"], int)
+    assert config.args["flag"] is True
+
+
+def test_dict_coercion_annotated_bare_dict():
+    """``Annotated[dict, Field(...)]`` should also get coercion."""
+    from typing import Annotated
+    from pydantic import Field
+
+    class Config(BaseConfig):
+        args: Annotated[dict, Field(description="env args")] = {}
+
+    config = Config.model_validate({"args": {"width": "800", "verbose": "false"}})
+    assert config.args["width"] == 800
+    assert config.args["verbose"] is False
+
+
+def test_dict_coercion_via_cli():
+    """End-to-end: dict values from CLI args should be properly typed."""
+    from typing import Any
+
+    class Config(BaseConfig):
+        extra_kwargs: dict[str, Any] = {}
+
+    config = cli(Config, args=["--extra-kwargs", '{"viewport_width": 800, "enabled": true}'])
+    assert config.extra_kwargs["viewport_width"] == 800
+    assert isinstance(config.extra_kwargs["viewport_width"], int)
+    assert config.extra_kwargs["enabled"] is True
+
+
+def test_dict_coercion_via_cli_bare_dict():
+    """End-to-end: bare ``dict`` field should work with JSON CLI args."""
+    class Config(BaseConfig):
+        args: dict = {}
+
+    config = cli(Config, args=["--args", '{"count": 10, "rate": 0.5}'])
+    assert config.args["count"] == 10
+    assert config.args["rate"] == 0.5
+
+
+def test_dict_coercion_toml_preserves_types(tmp_json_file):
+    """Dict values from config files should already have proper types (no coercion needed)."""
+    from typing import Any
+
+    class Config(BaseConfig):
+        args: dict[str, Any] = {}
+
+    write_file(tmp_json_file, '{"args": {"viewport_width": 800, "enabled": true, "rate": 0.5}}')
+    config = cli(Config, args=["@", tmp_json_file])
+    assert config.args["viewport_width"] == 800
+    assert isinstance(config.args["viewport_width"], int)
+    assert config.args["enabled"] is True
+    assert config.args["rate"] == 0.5
+
+
+def test_dict_coercion_nested_config():
+    """Dict coercion should work in nested configs."""
+    from typing import Any
+
+    class EnvConfig(BaseConfig):
+        id: str = "default"
+        args: dict[str, Any] = {}
+
+    class Config(BaseConfig):
+        env: EnvConfig = EnvConfig()
+
+    config = Config.model_validate({"env": {"id": "browser", "args": {"width": "800", "headless": "true"}}})
+    assert config.env.args["width"] == 800
+    assert config.env.args["headless"] is True
+
+
+def test_dict_coercion_negative_int():
+    """Negative integers should be coerced correctly."""
+    from typing import Any
+
+    class Config(BaseConfig):
+        args: dict[str, Any] = {}
+
+    config = Config.model_validate({"args": {"offset": "-10"}})
+    assert config.args["offset"] == -10
+    assert isinstance(config.args["offset"], int)
+
+
+def test_dict_coercion_scientific_float():
+    """Scientific notation floats don't round-trip via str(), so they stay as strings."""
+    from typing import Any
+
+    class Config(BaseConfig):
+        args: dict[str, Any] = {}
+
+    config = Config.model_validate({"args": {"lr": "1e-4"}})
+    assert config.args["lr"] == "1e-4"
+    assert isinstance(config.args["lr"], str)
+
+
+def test_dict_coercion_leading_zeros_stay_string():
+    """Values like '007' should stay as strings (int('007') != '007')."""
+    from typing import Any
+
+    class Config(BaseConfig):
+        args: dict[str, Any] = {}
+
+    config = Config.model_validate({"args": {"code": "007"}})
+    assert config.args["code"] == "007"
+    assert isinstance(config.args["code"], str)
