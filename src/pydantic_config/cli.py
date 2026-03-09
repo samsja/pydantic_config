@@ -38,6 +38,45 @@ from pydantic import BaseModel, ConfigDict, model_validator
 T = TypeVar("T")
 
 
+def _coerce_str_value(v: str) -> bool | int | float | str:
+    """Coerce a single string to bool, int, float, or leave as str."""
+    if v.lower() == "true":
+        return True
+    if v.lower() == "false":
+        return False
+    try:
+        int_val = int(v)
+        if str(int_val) == v:
+            return int_val
+    except ValueError:
+        pass
+    try:
+        float_val = float(v)
+        if str(float_val) == v:
+            return float_val
+    except ValueError:
+        pass
+    return v
+
+
+def _coerce_dict_values(d: dict) -> dict:
+    """Coerce all-string dict values to proper Python types.
+
+    Only runs when every value is a string (i.e. from CLI parsing).
+    TOML/programmatic dicts already have proper types and pass through unchanged.
+    """
+    if not d or not all(isinstance(v, str) for v in d.values()):
+        return d
+    return {k: _coerce_str_value(v) for k, v in d.items()}
+
+
+def _is_dict_annotation(annotation: type) -> bool:
+    """Check if an annotation is a dict type (bare ``dict`` or ``dict[K, V]``)."""
+    if hasattr(annotation, "__metadata__"):
+        annotation = get_args(annotation)[0]
+    return annotation is dict or get_origin(annotation) is dict
+
+
 class BaseConfig(BaseModel):
     """Base configuration class with strict validation (extra fields forbidden)."""
 
@@ -52,6 +91,24 @@ class BaseConfig(BaseModel):
         for key, value in data.items():
             if value == "None":
                 data[key] = None
+        return data
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_dict_str_values(cls, data: dict) -> dict:
+        """Coerce string values in dict-typed fields back to proper Python types.
+
+        tyro parses untyped dict values as strings. This detects dict fields
+        whose values are all strings (i.e. from CLI parsing) and converts
+        them back to int/float/bool.
+        """
+        if not isinstance(data, dict):
+            return data
+        for field_name, field_info in cls.model_fields.items():
+            if _is_dict_annotation(field_info.annotation) and field_name in data:
+                val = data[field_name]
+                if isinstance(val, dict):
+                    data[field_name] = _coerce_dict_values(val)
         return data
 
     @model_validator(mode="before")
@@ -374,10 +431,10 @@ def _find_optional_model_paths(cls: type, prefix: str = "") -> set[str]:
 
 
 def _is_dict_field(annotation: type) -> bool:
-    """Check if annotation is a dict type (e.g. dict[str, Any])."""
+    """Check if annotation is a dict type (bare ``dict`` or ``dict[str, Any]``)."""
     if hasattr(annotation, "__metadata__"):
         annotation = get_args(annotation)[0]
-    return get_origin(annotation) is dict
+    return annotation is dict or get_origin(annotation) is dict
 
 
 def _find_dict_field_paths(cls: type, prefix: str = "") -> set[str]:
